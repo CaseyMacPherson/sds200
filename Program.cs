@@ -80,22 +80,28 @@ bridge.OnDataReceived += (data) => {
 };
 
 await AnsiConsole.Live(Render(status, bridge.IsConnected, debugLog)).StartAsync(async ctx => {
-    while (true) {
+    while (true)
+    {
+        // Update the TUI
         ctx.UpdateTarget(Render(status, bridge.IsConnected, debugLog));
-        // Try SB (Basic) if SS (Search) isn't returning data
-        await bridge.SendCommandAsync("STS,SB");
-        await Task.Delay(250);
 
-        if (Console.KeyAvailable) {
-            var key = Console.ReadKey(true).Key;
-            if (key == ConsoleKey.S) await bridge.SendCommandAsync("KEY,S,P");
-            if (key == ConsoleKey.H) await bridge.SendCommandAsync("KEY,H,P");
-            if (key == ConsoleKey.F) {
-                var f = AnsiConsole.Ask<string>("[yellow]Enter Freq (MHz):[/]");
-                if (UnidenParser.TryValidateFrequency(f, out var valid)) await bridge.SendCommandAsync($"FRE,{valid}");
-            }
-            if (key == ConsoleKey.Escape) break;
+        // Request the data and WAIT for the radio to finish its thought
+        // This is the "Stop-and-Wait" flow the SDS200 requires
+        string response = await bridge.SendAndReceiveAsync("GSI,0", TimeSpan.FromMilliseconds(500));
+
+        if (response != "TIMEOUT" && response.StartsWith("GSI"))
+        {
+            UnidenParser.UpdateStatus(status, response);
         }
+        else if (response == "TIMEOUT")
+        {
+            status.LastCommandSent = "⚠️ Radio Timeout - Retrying...";
+        }
+
+        // Give the CPU and the Radio a 100ms breather
+        await Task.Delay(100);
+
+        // Keyboard handling...
     }
 });
 

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("sdsremote")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a851192bec948ce5d968dce9740d094bd7d5dc77")]
 [assembly: System.Reflection.AssemblyProductAttribute("sdsremote")]
 [assembly: System.Reflection.AssemblyTitleAttribute("sdsremote")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

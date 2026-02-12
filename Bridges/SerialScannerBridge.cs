@@ -1,48 +1,54 @@
 namespace SdsRemote.Bridges;
 using System.IO.Ports;
+using System.Text;
 using SdsRemote.Core;
 
 public class SerialScannerBridge : IScannerBridge
 {
     private SerialPort? _port;
+    private StringBuilder _buffer = new();
+    private TaskCompletionSource<string>? _responseTcs;
     private bool _eventMonitoringEnabled;
     public bool IsConnected => _port?.IsOpen ?? false;
     public event Action<string>? OnDataReceived;
 
-    public Task ConnectAsync(string name, int baud)
-    {
-        _port = new SerialPort(name, baud, Parity.None, 8, StopBits.One)
-        {
-            ReadTimeout = 500,
-            NewLine = "\r"
+    public async Task ConnectAsync(string name, int baud) {
+        _port = new SerialPort(name, baud, Parity.None, 8, StopBits.One) { ReadTimeout = 1000, WriteTimeout = 1000 };
+        _port.DataReceived += (s, e) => {
+            string chunk = _port.ReadExisting();
+            foreach (char c in chunk) {
+                if (c == '\r') {
+                    var fullLine = _buffer.ToString();
+                    _buffer.Clear();
+                    _responseTcs?.TrySetResult(fullLine);
+                    if (_eventMonitoringEnabled)
+                        OnDataReceived?.Invoke(fullLine);
+                } else {
+                    _buffer.Append(c);
+                }
+            }
         };
-        _port.DataReceived += OnSerialDataReceived;
         _port.Open();
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Enable event monitoring after connection is fully established
-    /// to avoid race conditions during port detection.
-    /// </summary>
     public void EnableEventMonitoring() => _eventMonitoringEnabled = true;
     public void DisableEventMonitoring() => _eventMonitoringEnabled = false;
 
-    private void OnSerialDataReceived(object sender, SerialDataReceivedEventArgs e)
-    {
-        if (!_eventMonitoringEnabled) return;
-        try
-        {
-            var data = _port?.ReadExisting();
-            if (!string.IsNullOrEmpty(data))
-                OnDataReceived?.Invoke(data);
-        }
-        catch { /* Handle timeout or disconnection */ }
+    public async Task<string> SendAndReceiveAsync(string command, TimeSpan timeout) {
+        if (!IsConnected) return "";
+        _responseTcs = new TaskCompletionSource<string>();
+        
+        _port!.Write(command.ToUpper() + "\r");
+
+        // Wait for the full line or timeout
+        var completedTask = await Task.WhenAny(_responseTcs.Task, Task.Delay(timeout));
+        return completedTask == _responseTcs.Task ? await _responseTcs.Task : "TIMEOUT";
     }
 
-    public async Task SendCommandAsync(string cmd)
-    {
-        if (IsConnected) _port!.Write(cmd + "\r");
+    // Standard method for one-way keys (Scan, Hold)
+    public async Task SendCommandAsync(string cmd) {
+        if (IsConnected) _port!.Write(cmd.ToUpper() + "\r");
         await Task.CompletedTask;
     }
 
