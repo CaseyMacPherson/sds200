@@ -10,3 +10,4 @@
 *.bak
 *.old
 *.swp
+**/.DS_Store

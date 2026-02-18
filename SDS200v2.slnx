@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="sdsremote.csproj" />
-  <Project Path="SdsRemote.Tests/SdsRemote.Tests.csproj" />
+  <Project Path="SDS200.Cli.Tests\SDS200.Cli.Tests.csproj" />
+  <Project Path="SDS200.Cli\SDS200.Cli.csproj" />
 </Solution>
