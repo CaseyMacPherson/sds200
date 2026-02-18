@@ -1,0 +1,12 @@
+**/obj/**
+**/bin/**
+**/.idea/**
+**/.vscode/**
+*.user
+*.suo
+*.log
+*.tmp
+*.cache
+*.bak
+*.old
+*.swp

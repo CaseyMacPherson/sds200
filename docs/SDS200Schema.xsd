@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+    <!-- Placeholder for additional schema definitions -->
+    <xs:simpleType name="OffOnType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Off" />
+            <xs:enumeration value="On" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="AvoidType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Off" />
+            <xs:enumeration value="T-Avoid" />
+            <xs:enumeration value="Avoid" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="ModulationType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Auto" />
+            <xs:enumeration value="AM" />
+            <xs:enumeration value="NFM" />
+            <xs:enumeration value="FM" />
+            <xs:enumeration value="WFM" />
+            <xs:enumeration value="FMB" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="AttenuatorType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Off" />
+            <xs:enumeration value="On" />
+            <xs:enumeration value="G-Att" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="P25StatusType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="None" />
+            <xs:enumeration value="Data" />
+            <xs:enumeration value="P25" />
+            <xs:enumeration value="DMR" />
+            <xs:enumeration value="CAP" />
+            <xs:enumeration value="CON" />
+            <xs:enumeration value="DT3" />
+            <xs:enumeration value="XPT" />
+            <xs:enumeration value="NX9" />
+            <xs:enumeration value="NX4" />
+            <xs:enumeration value="ND9" />
+            <xs:enumeration value="ND4" />
+            <xs:enumeration value="IDS" />
+            <xs:enumeration value="NXD" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="PriorityType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Off" />
+            <xs:enumeration value="DND" />
+            <xs:enumeration value="Priority" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="SlotType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Slot 1" />
+            <xs:enumeration value="Slot 2" />
+            <xs:enumeration value="None" />
+            <xs:enumeration value="Any" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="ScannerModeType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Scan Mode" />
+            <xs:enumeration value="Scan Hold" />
+            <xs:enumeration value="Tone-Out" />
+            <xs:enumeration value="Custom Search" />
+            <xs:enumeration value="Custom Search Hold" />
+            <xs:enumeration value="Quick Search" />
+            <xs:enumeration value="Quick Search Hold" />
+            <xs:enumeration value="Service Scan" />
+            <xs:enumeration value="Service Scan Hold" />
+            <xs:enumeration value="Trunk Scan" />
+            <xs:enumeration value="Trunk Scan Hold" />
+            <xs:enumeration value="Close Call Only" />
+            <xs:enumeration value="Close Call" />
+            <xs:enumeration value="Menu tree" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="ASCIICode">
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="64" />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="V_ScreenType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="plain_text" />
+            <xs:enumeration value="conventional_scan" />
+            <xs:enumeration value="trunk_scan" />
+            <xs:enumeration value="custom_with_scan" />
+            <xs:enumeration value="cchits_with_scan" />
+            <xs:enumeration value="custom_search" />
+            <xs:enumeration value="quick_search" />
+            <xs:enumeration value="close_call" />
+            <xs:enumeration value="cc_searching" />
+            <xs:enumeration value="tone_out" />
+            <xs:enumeration value="wx_alert" />
+            <xs:enumeration value="discovery_conventional" />
+            <xs:enumeration value="discovery_trunking" />
+            <xs:enumeration value="reverse_frequency" />
+            <xs:enumeration value="repeater_find" />
+            <xs:enumeration value="direct_entry" />
+            <xs:enumeration value="menu_selection" />
+            <xs:enumeration value="menu_input" />
+            <xs:enumeration value="analyze_system_status" />
+            <xs:enumeration value="analyze" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="ALedType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Off" />
+            <xs:enumeration value="Blue" />
+            <xs:enumeration value="Red" />
+            <xs:enumeration value="Magenta" />
+            <xs:enumeration value="Green" />
+            <xs:enumeration value="Cyan" />
+            <xs:enumeration value="Yellow" />
+            <xs:enumeration value="White" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="MuteType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Unmute" />
+            <xs:enumeration value="Mute" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:element name="MonitorList">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="ListType" type="xs:string" />
+            <xs:attribute name="Q_Key" type="xs:string" />
+            <xs:attribute name="N_Tag" type="xs:string" />
+            <xs:attribute name="DB_Counter" type="xs:integer" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="System">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="System_Type" type="xs:string" />
+            <xs:attribute name="Q_Key" type="xs:string" />
+            <xs:attribute name="N_Tag" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Department">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="Q_Key" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Site">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="Q_Key" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="Mod" type="ModulationType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="ConvFrequency">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="N_Tag" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="SvcType" type="xs:string" />
+            <xs:attribute name="P_Ch" type="OffOnType" />
+            <xs:attribute name="SAS" type="xs:string" />
+            <xs:attribute name="SAL" type="OffOnType" />
+            <xs:attribute name="SAD" type="xs:string" />
+            <xs:attribute name="RecSlot" type="SlotType" />
+            <xs:attribute name="LVL" type="xs:integer" />
+            <xs:attribute name="IFX" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="TGID">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="TGID" type="xs:string" />
+            <xs:attribute name="SetSlot" type="SlotType" />
+            <xs:attribute name="RecSlot" type="SlotType" />
+            <xs:attribute name="N_Tag" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="SvcType" type="xs:string" />
+            <xs:attribute name="P_Ch" type="OffOnType" />
+            <xs:attribute name="LVL" type="xs:integer" />
+            <xs:attribute name="U_Id" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="SiteFrequency">
+        <xs:complexType>
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="SAS" type="xs:string" />
+            <xs:attribute name="SAD" type="xs:string" />
+            <xs:attribute name="IFX" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="SrchFrequency">
+        <xs:complexType>
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="SearchBanks">
+        <xs:complexType>
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="BankStatus" type="xs:string" />
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="BankNo" type="xs:integer" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="CC_Bands">
+        <xs:complexType>
+            <xs:attribute name="BandStatus" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="CcHitsChannel">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="Avoid" type="AvoidType" />
+            <xs:attribute name="CH_No" type="xs:integer" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="SAD" type="xs:string" />
+            <xs:attribute name="LVL" type="xs:integer" />
+            <xs:attribute name="IFX" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="SearchRange">
+        <xs:complexType>
+            <xs:attribute name="Lower" type="xs:string" />
+            <xs:attribute name="Upper" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="Step" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="ToneOutChannel">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="CH_No" type="xs:integer" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="LVL" type="xs:integer" />
+            <xs:attribute name="IFX" type="OffOnType" />
+            <xs:attribute name="ToneA" type="xs:string" />
+            <xs:attribute name="ToneB" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="WxMode">
+        <xs:complexType>
+            <xs:attribute name="Mode" type="xs:string" />
+            <xs:attribute name="SAME" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="WxChannel">
+        <xs:complexType>
+            <xs:attribute name="Name" type="ASCIICode" />
+            <xs:attribute name="Index" type="xs:integer" />
+            <xs:attribute name="CH_No" type="xs:integer" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="Mod" type="xs:string" />
+            <xs:attribute name="Hold" type="OffOnType" />
+            <xs:attribute name="LVL" type="xs:integer" />
+            <xs:attribute name="IFX" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="ConventionalDiscovery">
+        <xs:complexType>
+            <xs:attribute name="Lower" type="xs:string" />
+            <xs:attribute name="Upper" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="Step" type="xs:string" />
+            <xs:attribute name="Freq" type="xs:string" />
+            <xs:attribute name="SAD" type="xs:string" />
+            <xs:attribute name="RecSlot" type="SlotType" />
+            <xs:attribute name="PastTime" type="xs:string" />
+            <xs:attribute name="HitCount" type="xs:integer" />
+            <xs:attribute name="TGID" type="xs:string" />
+            <xs:attribute name="U_Id" type="xs:string" />
+            <xs:attribute name="IFX" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="TrunkingDiscovery">
+        <xs:complexType>
+            <xs:attribute name="SystemName" type="ASCIICode" />
+            <xs:attribute name="SiteName" type="ASCIICode" />
+            <xs:attribute name="TGID" type="xs:string" />
+            <xs:attribute name="TgidName" type="xs:string" />
+            <xs:attribute name="SAD" type="xs:string" />
+            <xs:attribute name="RecSlot" type="SlotType" />
+            <xs:attribute name="PastTime" type="xs:string" />
+            <xs:attribute name="HitCount" type="xs:integer" />
+            <xs:attribute name="U_Id" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="SystemStatus">
+        <xs:complexType>
+            <xs:attribute name="SystemName" type="ASCIICode" />
+            <xs:attribute name="SiteName" type="ASCIICode" />
+            <xs:attribute name="Signal" type="xs:integer" />
+            <xs:attribute name="Quality" type="xs:integer" />
+            <xs:attribute name="Activity" type="xs:integer" />
+            <xs:attribute name="SystemID" type="xs:string" />
+            <xs:attribute name="SystemSubID" type="xs:integer" />
+            <xs:attribute name="SiteID" type="xs:integer" />
+            <xs:attribute name="WacnID" type="xs:string" />
+            <xs:attribute name="NAC" type="xs:string" />
+            <xs:attribute name="Color" type="xs:integer" />
+            <xs:attribute name="RAN" type="xs:integer" />
+            <xs:attribute name="Area" type="xs:integer" />
+            <xs:attribute name="Att" type="AttenuatorType" />
+            <xs:attribute name="Freqs" type="xs:integer" />
+            <xs:attribute name="P25Status" type="P25StatusType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Analyze">
+        <xs:complexType>
+            <xs:attribute name="Msg1" type="ASCIICode" />
+            <xs:attribute name="Msg2" type="ASCIICode" />
+            <xs:attribute name="SystemName" type="ASCIICode" />
+            <xs:attribute name="SiteName" type="ASCIICode" />
+            <xs:attribute name="Att" type="AttenuatorType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="WaterfallBand">
+        <xs:complexType>
+            <xs:attribute name="Lower" type="xs:string" />
+            <xs:attribute name="Center" type="xs:string" />
+            <xs:attribute name="Upper" type="xs:string" />
+            <xs:attribute name="Mod" type="ModulationType" />
+            <xs:attribute name="Step" type="xs:string" />
+            <xs:attribute name="Span" type="xs:string" />
+            <xs:attribute name="Limit" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="WaterfallSettings">
+        <xs:complexType>
+            <xs:attribute name="MF" type="xs:string" />
+            <xs:attribute name="Gain" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="DualWatch">
+        <xs:complexType>
+            <xs:attribute name="PRI" type="PriorityType" />
+            <xs:attribute name="CC" type="PriorityType" />
+            <xs:attribute name="WX" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="AGC">
+        <xs:complexType>
+            <xs:attribute name="A_AGC" type="OffOnType" />
+            <xs:attribute name="D_AGC" type="OffOnType" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Property">
+        <xs:complexType>
+            <xs:attribute name="F" type="OffOnType" />
+            <xs:attribute name="VOL">
+                <xs:simpleType>
+                    <xs:restriction base="xs:integer">
+                        <xs:minInclusive value="0" />
+                        <xs:maxInclusive value="29" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="SQL">
+                <xs:simpleType>
+                    <xs:restriction base="xs:integer">
+                        <xs:minInclusive value="0" />
+                        <xs:maxInclusive value="19" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="Sig">
+                <xs:simpleType>
+                    <xs:restriction base="xs:integer">
+                        <xs:minInclusive value="0" />
+                        <xs:maxInclusive value="4" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="WiFi">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="Off" />
+                        <xs:enumeration value="0" />
+                        <xs:enumeration value="1" />
+                        <xs:enumeration value="2" />
+                        <xs:enumeration value="3" />
+                        <xs:enumeration value="AP" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="Battery">
+                <xs:simpleType>
+                    <xs:restriction base="xs:decimal">
+                        <xs:minInclusive value="0.0" />
+                        <xs:maxInclusive value="3.3" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="Att" type="AttenuatorType" />
+            <xs:attribute name="Rec" type="OffOnType" />
+            <xs:attribute name="KeyLock" type="OffOnType" />
+            <xs:attribute name="P25Status" type="P25StatusType" />
+            <xs:attribute name="Mute" type="MuteType" />
+            <xs:attribute name="A_Led" type="ALedType" />
+            <xs:attribute name="Dir">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="Up" />
+                        <xs:enumeration value="Down" />
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="Rssi" type="xs:string" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="ViewDescription">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="InfoArea1" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Text" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="InfoArea2" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Text" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="OverWrite" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Text" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="PopupScreen" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="Button" minOccurs="0" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:attribute name="Text" type="xs:string" />
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="Text" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="PlainText" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Text" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="ReplayDescription">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="File" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Index" type="xs:integer" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="ReplayMode" minOccurs="0">
+                    <xs:complexType>
+                        <xs:attribute name="Mode" type="xs:string" />
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:group name="ScanConventionalGroup">
+        <xs:sequence>
+            <xs:element ref="MonitorList" minOccurs="0" />
+            <xs:element ref="System" minOccurs="0" />
+            <xs:element ref="Department" minOccurs="0" />
+            <xs:element ref="ConvFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="ScanTrunkGroup">
+        <xs:sequence>
+            <xs:element ref="MonitorList" minOccurs="0" />
+            <xs:element ref="System" minOccurs="0" />
+            <xs:element ref="Department" minOccurs="0" />
+            <xs:element ref="Site" minOccurs="0" />
+            <xs:element ref="TGID" minOccurs="0" />
+            <xs:element ref="SiteFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="ScanCustomGroup">
+        <xs:sequence>
+            <xs:element ref="MonitorList" minOccurs="0" />
+            <xs:element ref="System" minOccurs="0" />
+            <xs:element ref="Department" minOccurs="0" />
+            <xs:element ref="SrchFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+            <xs:element ref="SearchRange" minOccurs="0" />
+            <xs:element ref="SearchBanks" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="CcHitsScanGroup">
+        <xs:sequence>
+            <xs:element ref="MonitorList" minOccurs="0" />
+            <xs:element ref="System" minOccurs="0" />
+            <xs:element ref="Department" minOccurs="0" />
+            <xs:element ref="CcHitsChannel" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="SearchCustomGroup">
+        <xs:sequence>
+            <xs:element ref="SrchFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+            <xs:element ref="SearchRange" minOccurs="0" />
+            <xs:element ref="SearchBanks" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="SearchQuickGroup">
+        <xs:sequence>
+            <xs:element ref="SrchFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+            <xs:element ref="SearchRange" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="CloseCallGroup">
+        <xs:sequence>
+            <xs:element ref="SrchFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+            <xs:element ref="SearchRange" minOccurs="0" />
+            <xs:element ref="CC_Bands" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="ToneOutGroup">
+        <xs:sequence>
+            <xs:element ref="ToneOutChannel" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="WeatherGroup">
+        <xs:sequence>
+            <xs:element ref="WxChannel" minOccurs="0" />
+            <xs:element ref="WxMode" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="RepeaterFindGroup">
+        <xs:sequence>
+            <xs:element ref="SrchFrequency" minOccurs="0" />
+            <xs:element ref="DualWatch" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="DiscoveryConventionalGroup">
+        <xs:sequence>
+            <xs:element ref="ConventionalDiscovery" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="DiscoveryTrunkingGroup">
+        <xs:sequence>
+            <xs:element ref="TrunkingDiscovery" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="AnalyzeGroup">
+        <xs:sequence>
+            <xs:element ref="SystemStatus" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="WaterfallGroup">
+        <xs:sequence>
+            <xs:element ref="Analyze" minOccurs="0" />
+            <xs:element ref="WaterfallBand" minOccurs="0" />
+            <xs:element ref="WaterfallSettings" minOccurs="0" />
+        </xs:sequence>
+    </xs:group>
+
+    <xs:element name="ScannerInfo">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:choice>
+                    <xs:group ref="ScanConventionalGroup" />
+                    <xs:group ref="ScanTrunkGroup" />
+                    <xs:group ref="ScanCustomGroup" />
+                    <xs:group ref="CcHitsScanGroup" />
+                    <xs:group ref="SearchCustomGroup" />
+                    <xs:group ref="SearchQuickGroup" />
+                    <xs:group ref="CloseCallGroup" />
+                    <xs:group ref="ToneOutGroup" />
+                    <xs:group ref="WeatherGroup" />
+                    <xs:group ref="RepeaterFindGroup" />
+                    <xs:group ref="DiscoveryConventionalGroup" />
+                    <xs:group ref="DiscoveryTrunkingGroup" />
+                    <xs:group ref="AnalyzeGroup" />
+                    <xs:group ref="WaterfallGroup" />
+                </xs:choice>
+
+                <xs:element ref="ViewDescription" minOccurs="0" />
+                <xs:element ref="ReplayDescription" minOccurs="0" />
+                <xs:element ref="Property" minOccurs="0" />
+                <xs:element ref="AGC" minOccurs="0" />
+            </xs:sequence>
+
+            <xs:attribute name="Mode" type="ScannerModeType" />
+            <xs:attribute name="V_Screen" type="V_ScreenType" />
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>

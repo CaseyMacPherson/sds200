@@ -10,4 +10,8 @@
     <PackageReference Include="Spectre.Console" Version="0.48.0" />
     <PackageReference Include="System.IO.Ports" Version="10.0.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="SdsRemote.Tests/**/*.cs" />
+  </ItemGroup>
 </Project>
