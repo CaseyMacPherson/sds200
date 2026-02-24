@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
-using SDS200.Cli.Core;
+using SDS200.Cli.Abstractions;
+using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Presentation;
 
 namespace SDS200.Cli.Logic;
 
 /// <summary>
 /// Handles non-blocking keyboard input polling and dispatches key actions
-/// (view toggle, mute, record, volume, spacebar help).
+/// (view toggle, mute, record, volume, spacebar help, command mode, quit).
 /// </summary>
 public class KeyboardHandler
 {
@@ -20,6 +21,14 @@ public class KeyboardHandler
     public bool SpacebarHeld { get; set; }
     public bool MuteState { get; private set; }
     public bool RecordState { get; private set; }
+    
+    // Quit state
+    public bool QuitRequested { get; private set; }
+    
+    // Command mode state
+    public string CommandInput { get; private set; } = "";
+    public ConcurrentQueue<string> CommandHistory { get; } = new();
+    private const int MaxCommandHistorySize = 50;
 
     /// <summary>
     /// Creates a new KeyboardHandler.
@@ -63,12 +72,32 @@ public class KeyboardHandler
     /// </summary>
     public async Task HandleKeyAsync(ConsoleKeyInfo key)
     {
+        // In Command mode, handle input differently
+        if (ViewMode == ViewMode.Command)
+        {
+            await HandleCommandModeKeyAsync(key);
+            return;
+        }
+
+        // ESC key - return to Main view from Debug view
+        if (key.Key == ConsoleKey.Escape)
+        {
+            if (ViewMode == ViewMode.Debug)
+            {
+                ViewMode = ViewMode.Main;
+                EnqueueDebug("Exited Debug View");
+            }
+            return;
+        }
+
         string keyName = key.KeyChar switch
         {
             'D' or 'd' => MarkupConstants.KeyPressedD,
             'R' or 'r' => MarkupConstants.KeyPressedR,
             'M' or 'm' => MarkupConstants.KeyPressedM,
             'V' or 'v' => MarkupConstants.KeyPressedV,
+            'C' or 'c' => MarkupConstants.KeyPressedC,
+            'Q' or 'q' => MarkupConstants.KeyPressedQ,
             ' ' => MarkupConstants.KeyPressedSpace,
             _ => $"Unknown: {key.KeyChar}"
         };
@@ -81,6 +110,17 @@ public class KeyboardHandler
         {
             case 'D' or 'd':
                 ViewMode = ViewMode == ViewMode.Main ? ViewMode.Debug : ViewMode.Main;
+                break;
+
+            case 'C' or 'c':
+                ViewMode = ViewMode.Command;
+                CommandInput = "";
+                EnqueueDebug("Entered Command Mode");
+                break;
+
+            case 'Q' or 'q':
+                QuitRequested = true;
+                EnqueueDebug("Quit requested");
                 break;
 
             case 'R' or 'r':
@@ -103,6 +143,80 @@ public class KeyboardHandler
                 SpacebarHeld = !SpacebarHeld;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Handles key input when in Command mode.
+    /// </summary>
+    private async Task HandleCommandModeKeyAsync(ConsoleKeyInfo key)
+    {
+        // ESC - exit command mode
+        if (key.Key == ConsoleKey.Escape)
+        {
+            ViewMode = ViewMode.Main;
+            CommandInput = "";
+            EnqueueDebug("Exited Command Mode");
+            return;
+        }
+
+        // Enter - send command
+        if (key.Key == ConsoleKey.Enter)
+        {
+            if (!string.IsNullOrWhiteSpace(CommandInput))
+            {
+                await SendCommandAsync(CommandInput);
+            }
+            return;
+        }
+
+        // Backspace - delete last character
+        if (key.Key == ConsoleKey.Backspace)
+        {
+            if (CommandInput.Length > 0)
+            {
+                CommandInput = CommandInput[..^1];
+            }
+            return;
+        }
+
+        // Regular character input
+        if (!char.IsControl(key.KeyChar))
+        {
+            CommandInput += key.KeyChar;
+        }
+    }
+
+    /// <summary>
+    /// Sends a command to the scanner and logs the response.
+    /// </summary>
+    public async Task SendCommandAsync(string command)
+    {
+        string timestamp = DateTime.Now.ToString("HH:mm:ss");
+        
+        // Log the sent command
+        EnqueueCapped(CommandHistory, $"[{timestamp}] >> {command}", MaxCommandHistorySize);
+        
+        // Send and receive response
+        string response = await _bridge.SendAndReceiveAsync(command, TimeSpan.FromSeconds(2));
+        
+        // Log the response
+        string responseTimestamp = DateTime.Now.ToString("HH:mm:ss");
+        if (response == "TIMEOUT")
+        {
+            EnqueueCapped(CommandHistory, $"[{responseTimestamp}] << [TIMEOUT - No response]", MaxCommandHistorySize);
+        }
+        else
+        {
+            // Split multi-line responses
+            var lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                EnqueueCapped(CommandHistory, $"[{responseTimestamp}] << {line}", MaxCommandHistorySize);
+            }
+        }
+        
+        // Clear input for next command
+        CommandInput = "";
     }
 
     private void EnqueueDebug(string message)

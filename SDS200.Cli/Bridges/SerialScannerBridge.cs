@@ -1,9 +1,8 @@
-using SDS200.Cli.Core;
+using SDS200.Cli.Abstractions.Core;
 
 namespace SDS200.Cli.Bridges;
 using System.IO.Ports;
 using System.Text;
-using Cli.Core;
 
 public class SerialScannerBridge : IScannerBridge
 {

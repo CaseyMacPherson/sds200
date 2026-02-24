@@ -1,47 +1,26 @@
+// This file exists for backward compatibility.
+// ContactLogEntry has been moved to SDS200.Cli.Abstractions.Models.ContactLogEntry
+// Import it using: using SDS200.Cli.Abstractions.Models;
+
 namespace SDS200.Cli.Models;
 
-/// <summary>
-/// Represents a single contact (signal lock) event detected by the scanner.
-/// A contact is created when RSSI crosses above a threshold.
-/// </summary>
+[System.Obsolete("Use SDS200.Cli.Abstractions.Models.ContactLogEntry instead")]
+#pragma warning disable CS0649
 public class ContactLogEntry
 {
-    /// <summary>When the signal lock started.</summary>
     public DateTime LockTime { get; set; }
-
-    /// <summary>Frequency in MHz when locked.</summary>
     public double Frequency { get; set; }
-
-    /// <summary>Modulation mode (e.g., "FM", "DMR").</summary>
     public string Modulation { get; set; } = "---";
-
-    /// <summary>Scanner's current mode (from V_Screen attribute).</summary>
     public string Mode { get; set; } = "---";
-
-    /// <summary>System name at lock time.</summary>
     public string SystemName { get; set; } = "---";
-
-    /// <summary>Channel or department name at lock time.</summary>
     public string ChannelName { get; set; } = "---";
-
-    /// <summary>TGID if applicable (trunk mode only).</summary>
     public string TgId { get; set; } = "---";
-
-    /// <summary>Site name if applicable (trunk mode only).</summary>
     public string SiteName { get; set; } = "---";
-
-    /// <summary>Signal strength when locked (RSSI value).</summary>
     public string Rssi { get; set; } = "S0";
-
-    /// <summary>Get the duration of this contact in seconds since lock.</summary>
     public double DurationSeconds => (DateTime.UtcNow - LockTime).TotalSeconds;
 
-    /// <summary>
-    /// Create a contact entry from current scanner status.
-    /// </summary>
-    public static ContactLogEntry FromStatus(ScannerStatus status)
-    {
-        return new ContactLogEntry
+    public static ContactLogEntry FromStatus(ScannerStatus status) =>
+        new ContactLogEntry
         {
             LockTime = DateTime.UtcNow,
             Frequency = status.Frequency,
@@ -53,5 +32,6 @@ public class ContactLogEntry
             SiteName = status.SiteName,
             Rssi = status.Rssi
         };
-    }
 }
+#pragma warning restore CS0649
+

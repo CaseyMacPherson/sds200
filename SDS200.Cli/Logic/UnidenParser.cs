@@ -1,7 +1,6 @@
-using SDS200.Cli.Models;
+using SDS200.Cli.Abstractions.Models;
 
 namespace SDS200.Cli.Logic;
-using Cli.Models;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
 
@@ -83,6 +82,7 @@ public static class UnidenParser
             // Common elements (always present regardless of mode)
             ParseProperty(root, status);
             ParseMonitorList(root, status);
+            ParseViewDescription(root, status);
 
             return true;
         }
@@ -351,6 +351,52 @@ public static class UnidenParser
             s.Volume = vol;
         if (int.TryParse(prop.Attribute("SQL")?.Value, out int sql))
             s.Squelch = sql;
+    }
+
+    /// <summary>Parse ViewDescription for menu/popup display info</summary>
+    private static void ParseViewDescription(XElement root, ScannerStatus s)
+    {
+        s.InfoLines.Clear();
+        s.PopupText = "";
+        s.IsInMenu = false;
+        s.MenuTitle = "";
+
+        var viewDesc = root.Element("ViewDescription");
+        if (viewDesc == null) return;
+
+        // Parse InfoArea elements (InfoArea1 through InfoArea20)
+        for (int i = 1; i <= 20; i++)
+        {
+            var infoArea = viewDesc.Element($"InfoArea{i}");
+            if (infoArea != null)
+            {
+                string text = infoArea.Attribute("Text")?.Value ?? "";
+                if (!string.IsNullOrEmpty(text))
+                {
+                    s.InfoLines.Add(text);
+                }
+            }
+        }
+
+        // Parse PopupScreen for dialog/confirmation prompts
+        var popup = viewDesc.Element("PopupScreen");
+        if (popup != null)
+        {
+            s.PopupText = popup.Attribute("Text")?.Value ?? "";
+            // Clean up newline escapes
+            s.PopupText = s.PopupText.Replace("\\n", "\n").Trim();
+        }
+
+        // Detect menu mode from V_Screen or Mode attribute
+        string vscreen = s.VScreen.ToLowerInvariant();
+        string mode = s.Mode.ToLowerInvariant();
+        s.IsInMenu = vscreen.Contains("menu") || 
+                     mode.Contains("menu") ||
+                     !string.IsNullOrEmpty(s.PopupText);
+
+        // Extract menu title from first InfoArea or Mode
+        if (s.InfoLines.Count > 0)
+            s.MenuTitle = s.InfoLines[0];
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

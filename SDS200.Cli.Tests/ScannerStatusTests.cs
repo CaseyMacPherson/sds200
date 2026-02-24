@@ -1,7 +1,8 @@
 namespace SdsRemote.Tests;
 
 using Xunit;
-using SDS200.Cli.Models;
+using SDS200.Cli.Abstractions.Models;
+using SDS200.Cli.Presentation;
 
 public class ScannerStatusTests
 {
@@ -169,9 +170,9 @@ public class ScannerStatusTests
         var status = new ScannerStatus();
 
         // Act
-        status.LastCommandSent = "✅ Status Updated";
+        status.LastCommandSent = MarkupConstants.StatusUpdated;
 
         // Assert
-        Assert.Equal("✅ Status Updated", status.LastCommandSent);
+        Assert.Equal(MarkupConstants.StatusUpdated, status.LastCommandSent);
     }
 }

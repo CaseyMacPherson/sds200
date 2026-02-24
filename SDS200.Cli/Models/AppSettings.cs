@@ -1,9 +1,11 @@
-using System;
-using System.IO;
-using System.Text.Json;
+// This file exists for backward compatibility.
+// AppSettings has been moved to SDS200.Cli.Abstractions.Models.AppSettings
+// Import it using: using SDS200.Cli.Abstractions.Models;
 
 namespace SDS200.Cli.Models;
 
+[System.Obsolete("Use SDS200.Cli.Abstractions.Models.AppSettings instead")]
+#pragma warning disable CS0649
 public class AppSettings
 {
     public string LastMode { get; set; } = "UDP";
@@ -11,24 +13,29 @@ public class AppSettings
     public string LastComPort { get; set; } = "";
     public int LastBaudRate { get; set; } = 115200;
 
-    private static string FilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
-
     public static AppSettings Load()
     {
-        try {
-            if (!File.Exists(FilePath)) return new AppSettings();
-            string json = File.ReadAllText(FilePath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-        } catch { return new AppSettings(); }
+        var abstractSettings = SDS200.Cli.Abstractions.Models.AppSettings.Load();
+        return new AppSettings
+        {
+            LastMode = abstractSettings.LastMode,
+            LastIp = abstractSettings.LastIp,
+            LastComPort = abstractSettings.LastComPort,
+            LastBaudRate = abstractSettings.LastBaudRate
+        };
     }
 
-    public void Save() 
+    public void Save()
     {
-        try {
-            string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(FilePath, json);
-        } catch (Exception ex) {
-            Console.WriteLine($"Could not save settings: {ex.Message}");
-        }
+        var abstractSettings = new SDS200.Cli.Abstractions.Models.AppSettings
+        {
+            LastMode = this.LastMode,
+            LastIp = this.LastIp,
+            LastComPort = this.LastComPort,
+            LastBaudRate = this.LastBaudRate
+        };
+        abstractSettings.Save();
     }
 }
+#pragma warning restore CS0649
+

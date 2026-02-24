@@ -1,5 +1,5 @@
 
-using SDS200.Cli.Core;
+using SDS200.Cli.Abstractions.Core;
 
 namespace SDS200.Cli.Bridges;
 

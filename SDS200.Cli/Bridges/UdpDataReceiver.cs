@@ -1,7 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using SDS200.Cli.Core;
+using SDS200.Cli.Abstractions.Core;
 
 namespace SDS200.Cli.Bridges;
 

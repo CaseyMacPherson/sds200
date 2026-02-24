@@ -1,4 +1,4 @@
-namespace SDS200.Cli.Core;
+namespace SDS200.Cli.Abstractions.Core;
 
 /// <summary>
 /// Abstraction for protocol-specific data receiving behavior.

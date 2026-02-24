@@ -347,4 +347,245 @@ public class SpectreConsoleMarkupTests
         Assert.Contains(ledStatus, result);
         Assert.NotNull(new Markup(result)); // Should not throw
     }
+
+    // ── STARTUP MESSAGES ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void Markup_FormatDebugModeStartup_DoesNotThrow()
+    {
+        // Arrange
+        string connectionType = "UDP (Network)";
+
+        // Act
+        string result = MarkupConstants.FormatDebugModeStartup(connectionType);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("UDP (Network)", result);
+    }
+
+    [Fact]
+    public void Markup_FormatDebugModeStartup_EscapesSpecialCharacters()
+    {
+        // Arrange - connection type with brackets that could be markup
+        string connectionType = "[Special] Mode";
+
+        // Act
+        string result = MarkupConstants.FormatDebugModeStartup(connectionType);
+
+        // Assert - should not throw when parsed
+        Assert.NotNull(new Markup(result));
+    }
+
+    [Fact]
+    public void Markup_FormatScannerIpPrompt_DoesNotThrow()
+    {
+        // Arrange
+        string defaultIp = "192.168.1.100";
+
+        // Act
+        string result = MarkupConstants.FormatScannerIpPrompt(defaultIp);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("192.168.1.100", result);
+    }
+
+    [Fact]
+    public void Markup_FormatUdpConnecting_DoesNotThrow()
+    {
+        // Arrange
+        string ip = "10.0.0.50";
+
+        // Act
+        string result = MarkupConstants.FormatUdpConnecting(ip);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("10.0.0.50", result);
+    }
+
+    [Fact]
+    public void Markup_FormatSerialConnecting_DoesNotThrow()
+    {
+        // Arrange
+        string port = "/dev/tty.usbserial-1234";
+
+        // Act
+        string result = MarkupConstants.FormatSerialConnecting(port);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("/dev/tty.usbserial-1234", result);
+    }
+
+    [Fact]
+    public void Markup_UdpConnectionConstants_DoNotThrow()
+    {
+        // Assert - all constants parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.UdpConnectedSuccess));
+        Assert.NotNull(new Markup(MarkupConstants.UdpConnectedFailure));
+    }
+
+    [Fact]
+    public void Markup_SerialConnectionConstants_DoNotThrow()
+    {
+        // Assert - all constants parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.SearchingForScanner));
+        Assert.NotNull(new Markup(MarkupConstants.AutoDetectFailed));
+        Assert.NotNull(new Markup(MarkupConstants.NoSerialPortsFound));
+    }
+
+    [Fact]
+    public void Markup_FormatScannerDetected_DoesNotThrow()
+    {
+        // Arrange
+        string port = "COM3";
+
+        // Act
+        string result = MarkupConstants.FormatScannerDetected(port);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("COM3", result);
+    }
+
+    [Fact]
+    public void Markup_FormatGreyMessage_DoesNotThrow()
+    {
+        // Arrange
+        string message = "Testing port COM1...";
+
+        // Act
+        string result = MarkupConstants.FormatGreyMessage(message);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+    }
+
+    [Fact]
+    public void Markup_FormatGreyMessage_EscapesSpecialCharacters()
+    {
+        // Arrange - message with brackets
+        string message = "Testing [special] port";
+
+        // Act
+        string result = MarkupConstants.FormatGreyMessage(message);
+
+        // Assert - should not throw
+        Assert.NotNull(new Markup(result));
+    }
+
+    // ── DEBUG VIEW PLACEHOLDERS ────────────────────────────────────────────────
+
+    [Fact]
+    public void Markup_DebugViewPlaceholders_DoNotThrow()
+    {
+        // Assert - both placeholders parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.NoKeyboardInput));
+        Assert.NotNull(new Markup(MarkupConstants.NoRadioData));
+    }
+
+    [Fact]
+    public void Markup_FormatModulation_DoesNotThrow()
+    {
+        // Arrange
+        string modulation = "P25";
+
+        // Act
+        string result = MarkupConstants.FormatModulation(modulation);
+
+        // Assert
+        Assert.NotNull(new Markup(result));
+        Assert.Contains("P25", result);
+    }
+
+    [Fact]
+    public void Markup_FormatModulation_EscapesSpecialCharacters()
+    {
+        // Arrange - modulation with brackets
+        string modulation = "[P25] Phase 1";
+
+        // Act
+        string result = MarkupConstants.FormatModulation(modulation);
+
+        // Assert - should not throw
+        Assert.NotNull(new Markup(result));
+    }
+
+    // ── STATUS INDICATORS ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void Markup_StatusIndicators_DoNotThrow()
+    {
+        // Assert - all status indicators parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.StatusDataUnrecognized));
+        Assert.NotNull(new Markup(MarkupConstants.StatusUpdated));
+        Assert.NotNull(new Markup(MarkupConstants.StatusTimeout));
+    }
+
+    [Fact]
+    public void Markup_StatusIndicators_ContainExpectedText()
+    {
+        // Assert - status indicators have descriptive text
+        Assert.Contains("WARN", MarkupConstants.StatusDataUnrecognized);
+        Assert.Contains("OK", MarkupConstants.StatusUpdated);
+        Assert.Contains("TIMEOUT", MarkupConstants.StatusTimeout);
+    }
+
+    [Fact]
+    public void Markup_StatusIndicators_DoNotContainEmoji()
+    {
+        // Assert - ensure emojis have been removed
+        Assert.DoesNotContain("✅", MarkupConstants.StatusUpdated);
+        Assert.DoesNotContain("⚠️", MarkupConstants.StatusDataUnrecognized);
+        Assert.DoesNotContain("⌛", MarkupConstants.StatusTimeout);
+    }
+
+    // ── MENU VIEW ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Markup_MenuViewConstants_DoNotThrow()
+    {
+        // Assert - all menu view constants parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.HeaderMenu));
+        Assert.NotNull(new Markup(MarkupConstants.HeaderPrompt));
+        Assert.NotNull(new Markup(MarkupConstants.MenuModeIndicator));
+        Assert.NotNull(new Markup(MarkupConstants.NoMenuInfo));
+        Assert.NotNull(new Markup(MarkupConstants.NoActivePrompt));
+    }
+
+    // ── COMMAND VIEW ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Markup_CommandViewConstants_DoNotThrow()
+    {
+        // Assert - all command view constants parse as valid markup
+        Assert.NotNull(new Markup(MarkupConstants.HeaderCommand));
+        Assert.NotNull(new Markup(MarkupConstants.CommandModeInstructions));
+        Assert.NotNull(new Markup(MarkupConstants.CommandInputPrompt));
+        Assert.NotNull(new Markup(MarkupConstants.NoCommandHistory));
+        Assert.NotNull(new Markup(MarkupConstants.CommandModeIndicator));
+        Assert.NotNull(new Markup(MarkupConstants.HotkeyCommandMode));
+    }
+
+    [Fact]
+    public void Markup_NewKeyConstants_DoNotThrow()
+    {
+        // Assert - C and Q key constants parse correctly
+        Assert.NotNull(MarkupConstants.KeyPressedC);
+        Assert.NotNull(MarkupConstants.KeyPressedQ);
+        Assert.Contains("Command", MarkupConstants.KeyPressedC);
+        Assert.Contains("Quit", MarkupConstants.KeyPressedQ);
+    }
+
+    [Fact]
+    public void Markup_HotkeyDisplays_IncludeCommandAndQuit()
+    {
+        // Assert - hotkey displays include the new C and Q keys
+        Assert.Contains("C", MarkupConstants.HotkeyMainCompact);
+        Assert.Contains("Q", MarkupConstants.HotkeyMainCompact);
+        Assert.Contains("Command", MarkupConstants.HotkeyMainExpanded);
+        Assert.Contains("Quit", MarkupConstants.HotkeyMainExpanded);
+    }
 }

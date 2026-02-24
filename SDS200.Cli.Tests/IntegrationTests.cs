@@ -2,8 +2,8 @@ namespace SdsRemote.Tests;
 
 using Xunit;
 using Moq;
-using SDS200.Cli.Core;
-using SDS200.Cli.Models;
+using SDS200.Cli.Abstractions.Core;
+using SDS200.Cli.Abstractions.Models;
 using SDS200.Cli.Logic;
 
 public class IntegrationTests

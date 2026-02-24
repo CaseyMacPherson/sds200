@@ -1,0 +1,45 @@
+SDS200v2 - .NET 10 CLI for Uniden SDS200 Scanner Control
+
+ARCHITECTURE LAYERS (never mix):
+- Presentation/ = Spectre.Console rendering only
+- Logic/ = Business rules, parsing, state management  
+- Bridges/ = Protocol implementations (Serial, UDP)
+- Core/ = Interfaces (IScannerBridge, IDataReceiver)
+- Models/ = Data structures (ScannerStatus, ContactLogEntry)
+
+KEY RULES:
+1. All public members need XML docs (/// <summary>)
+2. Private fields use _camelCase, properties use PascalCase
+3. No magic strings - use MarkupConstants.cs
+4. Escape user input before Spectre markup: Markup.Escape(input)
+5. Thread-safe cross-thread data: ConcurrentQueue<T>
+6. Commands to scanner end with \r and normalize to uppercase
+7. Transient errors return "TIMEOUT"/"DISCONNECTED", don't throw
+8. No dependency injection containers - explicit dependencies only
+
+PROTOCOL:
+- Serial: Stream buffering with \r delimiter
+- UDP Port 50536: Single-packet + multi-packet XML (GLT only)
+- Multi-packet uses <Footer No="X" EOT="1"/> for assembly
+
+CONCURRENCY:
+- Main thread: UI rendering (AnsiConsole.Live)
+- Keyboard task: Non-blocking polling (Console.KeyAvailable)
+- Data receiver: Serial events or UDP receive loop
+- Use CancellationToken for shutdown, lock (_lock) for state
+
+COLORS (Spectre.Console):
+- green = frequency, success
+- blue = system/department labels
+- yellow = TGID/channel, warnings
+- red = errors, hold, disconnected
+- grey/dim = metadata
+
+DON'T SUGGEST:
+- DI containers, ORMs, global static state
+- async void (except event handlers)
+- Mixing layers (UI code in Logic/)
+- ConfigureAwait(false) in app code
+
+See docs/DESIGN_GUIDE.md for full details.
+

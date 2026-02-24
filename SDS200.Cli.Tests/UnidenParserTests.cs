@@ -1,7 +1,7 @@
 namespace SdsRemote.Tests;
 
 using Xunit;
-using SDS200.Cli.Models;
+using SDS200.Cli.Abstractions.Models;
 using SDS200.Cli.Logic;
 
 public class UnidenParserTests
@@ -323,5 +323,115 @@ GSI,<XML>,<?xml version="1.0"?>
             UnidenParser.UpdateStatus(status, xml);
             Assert.Equal(expected, status.Frequency, precision: 4);
         }
+    }
+
+    [Fact]
+    public void UpdateStatus_ParsesViewDescriptionInfoLines()
+    {
+        // Arrange
+        var status = new ScannerStatus();
+        string xml = """
+GSI,<XML>,<?xml version="1.0"?>
+<ScannerInfo Mode="Menu" V_Screen="menu">
+  <ViewDescription>
+    <InfoArea1 Text="F0:01234-6*789" />
+    <InfoArea2 Text="S3:01234-6*---" />
+    <InfoArea3 Text="System Name" />
+  </ViewDescription>
+  <Property Rssi="0" />
+</ScannerInfo>
+""";
+
+        // Act
+        bool result = UnidenParser.UpdateStatus(status, xml);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal(3, status.InfoLines.Count);
+        Assert.Equal("F0:01234-6*789", status.InfoLines[0]);
+        Assert.Equal("S3:01234-6*---", status.InfoLines[1]);
+        Assert.Equal("System Name", status.InfoLines[2]);
+    }
+
+    [Fact]
+    public void UpdateStatus_ParsesPopupScreen()
+    {
+        // Arrange
+        var status = new ScannerStatus();
+        string xml = """
+GSI,<XML>,<?xml version="1.0"?>
+<ScannerInfo Mode="Quick Save" V_Screen="trunk_scan">
+  <ViewDescription>
+    <PopupScreen Text="Quick Save?\n" />
+  </ViewDescription>
+  <Property Rssi="0" />
+</ScannerInfo>
+""";
+
+        // Act
+        bool result = UnidenParser.UpdateStatus(status, xml);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal("Quick Save?", status.PopupText);
+        Assert.True(status.IsInMenu);
+    }
+
+    [Fact]
+    public void UpdateStatus_DetectsMenuMode()
+    {
+        // Arrange
+        var status = new ScannerStatus();
+        string xml = """
+GSI,<XML>,<?xml version="1.0"?>
+<ScannerInfo Mode="Settings Menu" V_Screen="menu">
+  <ViewDescription>
+    <InfoArea1 Text="Settings" />
+  </ViewDescription>
+  <Property Rssi="0" />
+</ScannerInfo>
+""";
+
+        // Act
+        bool result = UnidenParser.UpdateStatus(status, xml);
+
+        // Assert
+        Assert.True(result);
+        Assert.True(status.IsInMenu);
+        Assert.Equal("Settings", status.MenuTitle);
+    }
+
+    [Fact]
+    public void UpdateStatus_ClearsViewDescriptionOnNewParse()
+    {
+        // Arrange - first parse with ViewDescription
+        var status = new ScannerStatus();
+        string xmlWithMenu = """
+GSI,<XML>,<?xml version="1.0"?>
+<ScannerInfo Mode="Menu" V_Screen="menu">
+  <ViewDescription>
+    <InfoArea1 Text="Menu Item 1" />
+    <PopupScreen Text="Confirm?" />
+  </ViewDescription>
+  <Property Rssi="0" />
+</ScannerInfo>
+""";
+        UnidenParser.UpdateStatus(status, xmlWithMenu);
+        Assert.True(status.IsInMenu);
+
+        // Act - second parse without ViewDescription
+        string xmlScan = """
+GSI,<XML>,<?xml version="1.0"?>
+<ScannerInfo Mode="Scan" V_Screen="conventional_scan">
+  <Property Rssi="5" />
+</ScannerInfo>
+""";
+        bool result = UnidenParser.UpdateStatus(status, xmlScan);
+
+        // Assert - ViewDescription should be cleared
+        Assert.True(result);
+        Assert.Empty(status.InfoLines);
+        Assert.Equal("", status.PopupText);
+        Assert.False(status.IsInMenu);
     }
 }

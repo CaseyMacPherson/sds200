@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SDS200.Cli.Abstractions\SDS200.Cli.Abstractions.csproj" />
     <ProjectReference Include="..\SDS200.Cli\SDS200.Cli.csproj" />
   </ItemGroup>
 

@@ -1,7 +1,7 @@
 namespace SdsRemote.Tests;
 
 using Xunit;
-using SDS200.Cli.Models;
+using SDS200.Cli.Abstractions.Models;
 using SDS200.Cli.Logic;
 
 public class EdgeCaseTests
