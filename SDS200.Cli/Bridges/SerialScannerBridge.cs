@@ -4,17 +4,26 @@ namespace SDS200.Cli.Bridges;
 using System.IO.Ports;
 using System.Text;
 
-public class SerialScannerBridge : IScannerBridge
+/// <summary>
+/// Serial scanner bridge for SDS200 communication over USB.
+/// Uses standard serial port settings (115200, 8N1).
+/// </summary>
+public class SerialScannerBridge : ScannerBridgeBase
 {
     private SerialPort? _port;
-    private StringBuilder _buffer = new();
+    private readonly StringBuilder _buffer = new();
     private TaskCompletionSource<string>? _responseTcs;
     private bool _eventMonitoringEnabled;
-    public bool IsConnected => _port?.IsOpen ?? false;
-    public event Action<string>? OnDataReceived;
-    public event Action<string>? OnDataSent;
 
-    public async Task ConnectAsync(string name, int baud) {
+    /// <summary>Gets whether the serial port is open.</summary>
+    public override bool IsConnected
+    {
+        get => _port?.IsOpen ?? false;
+        protected set { /* Read-only based on port state */ }
+    }
+
+    /// <inheritdoc/>
+    public override async Task ConnectAsync(string name, int baud) {
         _port = new SerialPort(name, baud, Parity.None, 8, StopBits.One) { ReadTimeout = 1000, WriteTimeout = 1000 };
         _port.DataReceived += (s, e) => {
             string chunk = _port.ReadExisting();
@@ -24,7 +33,7 @@ public class SerialScannerBridge : IScannerBridge
                     _buffer.Clear();
                     _responseTcs?.TrySetResult(fullLine);
                     if (_eventMonitoringEnabled)
-                        OnDataReceived?.Invoke(fullLine);
+                        RaiseDataReceived(fullLine);
                 } else {
                     _buffer.Append(c);
                 }
@@ -34,15 +43,21 @@ public class SerialScannerBridge : IScannerBridge
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Enables event monitoring, allowing OnDataReceived to fire for all incoming data.
+    /// </summary>
     public void EnableEventMonitoring() => _eventMonitoringEnabled = true;
+
+    /// <summary>
+    /// Disables event monitoring.
+    /// </summary>
     public void DisableEventMonitoring() => _eventMonitoringEnabled = false;
 
-    public async Task<string> SendAndReceiveAsync(string command, TimeSpan timeout) {
+    /// <inheritdoc/>
+    protected override async Task<string> SendAndReceiveCoreAsync(string normalizedCommand, TimeSpan timeout) {
         if (!IsConnected) return "";
         _responseTcs = new TaskCompletionSource<string>();
         
-        var normalizedCommand = command.ToUpper();
-        OnDataSent?.Invoke(normalizedCommand);
         _port!.Write(normalizedCommand + "\r");
 
         // Wait for the full line or timeout
@@ -50,80 +65,35 @@ public class SerialScannerBridge : IScannerBridge
         return completedTask == _responseTcs.Task ? await _responseTcs.Task : "TIMEOUT";
     }
 
-    // Standard method for one-way keys (Scan, Hold)
-    public async Task SendCommandAsync(string cmd) {
+    /// <inheritdoc/>
+    protected override async Task SendCommandCoreAsync(string normalizedCommand) {
         if (IsConnected) {
-            var normalizedCmd = cmd.ToUpper();
-            OnDataSent?.Invoke(normalizedCmd);
-            _port!.Write(normalizedCmd + "\r");
+            _port!.Write(normalizedCommand + "\r");
         }
         await Task.CompletedTask;
     }
 
-    public void Dispose() => _port?.Dispose();
+    /// <inheritdoc/>
+    public override void Dispose() => _port?.Dispose();
 
     /// <summary>
     /// Returns available serial ports, filtered to exclude debug and Bluetooth ports.
     /// Prefers cu.* (macOS call-out) over tty.*, and prioritizes usbserial/usbmodem.
     /// </summary>
-    public static string[] GetFilteredPorts()
-    {
-        return SerialPort.GetPortNames()
-            .Where(p => !p.Contains("debug", StringComparison.OrdinalIgnoreCase) &&
-                        !p.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(p => p.Contains("/dev/cu.", StringComparison.OrdinalIgnoreCase))
-            .ThenByDescending(p => p.Contains("usbserial", StringComparison.OrdinalIgnoreCase) ||
-                                    p.Contains("usbmodem", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-    }
+    /// <remarks>Delegates to <see cref="SerialPortHelpers.GetFilteredPorts"/>.</remarks>
+    public static string[] GetFilteredPorts() => SerialPortHelpers.GetFilteredPorts();
 
     /// <summary>
     /// Auto-detect the SDS200 scanner by probing each filtered port with the MDL command.
     /// Returns the port name if found, or null.
     /// </summary>
-    public static async Task<string?> DetectScannerPortAsync(Action<string>? log = null)
-    {
-        var ports = GetFilteredPorts();
-        if (ports.Length == 0)
-        {
-            log?.Invoke("No serial ports found (after filtering debug/Bluetooth).");
-            return null;
-        }
+    /// <remarks>Delegates to <see cref="SerialPortHelpers.DetectScannerPortAsync"/>.</remarks>
+    public static Task<string?> DetectScannerPortAsync(Action<string>? log = null) 
+        => SerialPortHelpers.DetectScannerPortAsync(log);
 
-        log?.Invoke($"Probing ports: {string.Join(", ", ports)}");
-
-        foreach (var port in ports)
-        {
-            try
-            {
-                log?.Invoke($"Testing {port}...");
-                using var testPort = new SerialPort(port, 115200, Parity.None, 8, StopBits.One)
-                {
-                    ReadTimeout = 500
-                };
-                testPort.Open();
-                testPort.Write("MDL\r");
-                await Task.Delay(500);
-
-                var response = testPort.ReadExisting();
-                testPort.Close();
-
-                log?.Invoke($"Response from {port}: {(string.IsNullOrEmpty(response) ? "(empty)" : response.Replace("\r", "").Replace("\n", " "))}");
-
-                if (response.Contains("SDS200", StringComparison.OrdinalIgnoreCase) ||
-                    response.Contains("UNIDEN", StringComparison.OrdinalIgnoreCase))
-                {
-                    return port;
-                }
-            }
-            catch (Exception ex)
-            {
-                log?.Invoke($"Error testing {port}: {ex.Message}");
-            }
-        }
-
-        return null;
-    }
-
-    public static string[] GetAvailablePorts() => SerialPort.GetPortNames();
+    /// <summary>
+    /// Gets all available serial port names without filtering.
+    /// </summary>
+    /// <remarks>Delegates to <see cref="SerialPortHelpers.GetAvailablePorts"/>.</remarks>
+    public static string[] GetAvailablePorts() => SerialPortHelpers.GetAvailablePorts();
 }

@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text;
+using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Abstractions.Models;
 using SDS200.Cli.Presentation;
-using Spectre.Console;
 
 namespace SDS200.Cli.Logic;
 
@@ -18,6 +18,7 @@ public class GsiResponseHandler
     private readonly ScannerStatus _status;
     private readonly int _maxDebugLogSize;
     private readonly int _maxRawDataSize;
+    private readonly ITimeProvider _timeProvider;
 
     /// <summary>
     /// Creates a new GsiResponseHandler.
@@ -25,18 +26,21 @@ public class GsiResponseHandler
     /// <param name="status">Scanner status to update when GSI is parsed.</param>
     /// <param name="debugLog">Debug log queue for parsing events.</param>
     /// <param name="rawRadioData">Thread-safe queue for raw radio data display.</param>
+    /// <param name="timeProvider">Time provider for timestamps (optional, defaults to system time).</param>
     /// <param name="maxDebugLogSize">Maximum entries in debug log (default 5).</param>
     /// <param name="maxRawDataSize">Maximum entries in raw data log (default 30).</param>
     public GsiResponseHandler(
         ScannerStatus status,
         Queue<string> debugLog,
         ConcurrentQueue<string> rawRadioData,
+        ITimeProvider? timeProvider = null,
         int maxDebugLogSize = 5,
         int maxRawDataSize = 30)
     {
-        _status = status;
-        _debugLog = debugLog;
-        _rawRadioData = rawRadioData;
+        _status = status ?? throw new ArgumentNullException(nameof(status));
+        _debugLog = debugLog ?? throw new ArgumentNullException(nameof(debugLog));
+        _rawRadioData = rawRadioData ?? throw new ArgumentNullException(nameof(rawRadioData));
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
         _maxDebugLogSize = maxDebugLogSize;
         _maxRawDataSize = maxRawDataSize;
     }
@@ -67,14 +71,13 @@ public class GsiResponseHandler
         // Only attempt parsing when we have a complete document
         if (accumulated.Contains("</ScannerInfo>"))
         {
-            var safeData = Markup.Escape($"[{DateTime.Now:HH:mm:ss}] GSI parsed");
-            EnqueueCappedDebug(safeData);
+            // Note: Log entries are plain strings; escaping happens at render time in Presentation layer
+            EnqueueCappedDebug($"[{_timeProvider.Now:HH:mm:ss}] GSI parsed");
 
             bool parsed = UnidenParser.UpdateStatus(_status, accumulated);
             if (!parsed)
             {
-                var errorLog = Markup.Escape($"[{DateTime.Now:HH:mm:ss}] Parse failed");
-                EnqueueCappedDebug(errorLog);
+                EnqueueCappedDebug($"[{_timeProvider.Now:HH:mm:ss}] Parse failed");
             }
 
             // Reset buffer after processing

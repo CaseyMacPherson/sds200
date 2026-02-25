@@ -16,7 +16,7 @@ using System.Text;
 /// - XML responses (GLT, GSI, PSI) are split into multiple packets
 /// - Multi-packet responses use Footer No/EOT attributes for sequencing
 /// </summary>
-public class UdpScannerBridge : IScannerBridge
+public class UdpScannerBridge : ScannerBridgeBase
 {
     /// <summary>
     /// Default UDP port for SDS200 virtual serial over network.
@@ -38,11 +38,11 @@ public class UdpScannerBridge : IScannerBridge
         "GLT",  // Get List (Favorites, Systems, Departments) - uses Footer No/EOT
     };
 
-    public bool IsConnected { get; private set; }
-    public event Action<string>? OnDataReceived;
-    public event Action<string>? OnDataSent;
+    /// <summary>Gets or sets the connection status.</summary>
+    public override bool IsConnected { get; protected set; }
 
-    public async Task ConnectAsync(string ip, int port)
+    /// <inheritdoc/>
+    public override async Task ConnectAsync(string ip, int port)
     {
         _remoteEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
 
@@ -55,7 +55,7 @@ public class UdpScannerBridge : IScannerBridge
         _dataReceiver = new UdpDataReceiver(_client);
         _dataReceiver.OnMessageReceived += message =>
         {
-            OnDataReceived?.Invoke(message);
+            RaiseDataReceived(message);
         };
 
         // Start the background receive loop
@@ -66,12 +66,12 @@ public class UdpScannerBridge : IScannerBridge
         IsConnected = probe != "TIMEOUT" && probe != "DISCONNECTED";
     }
 
-    public async Task<string> SendAndReceiveAsync(string command, TimeSpan timeout)
+    /// <inheritdoc/>
+    protected override async Task<string> SendAndReceiveCoreAsync(string normalizedCommand, TimeSpan timeout)
     {
         if (_client == null || _remoteEndPoint == null || _dataReceiver == null) 
             return "DISCONNECTED";
 
-        var normalizedCommand = command.ToUpper().Trim();
         var isMultiPacketXml = IsMultiPacketXmlCommand(normalizedCommand);
         
         // Use longer timeout for multi-packet XML commands (GLT) as they involve multiple packets
@@ -81,7 +81,6 @@ public class UdpScannerBridge : IScannerBridge
         _dataReceiver.ExpectResponse(tcs, isMultiPacketXml);
 
         var bytes = Encoding.ASCII.GetBytes(normalizedCommand + "\r");
-        OnDataSent?.Invoke(normalizedCommand);
         await _client.SendAsync(bytes, bytes.Length, _remoteEndPoint);
 
         // Wait for the complete response or timeout
@@ -96,12 +95,11 @@ public class UdpScannerBridge : IScannerBridge
         return "TIMEOUT";
     }
 
-    public async Task SendCommandAsync(string cmd)
+    /// <inheritdoc/>
+    protected override async Task SendCommandCoreAsync(string normalizedCommand)
     {
         if (_client == null || _remoteEndPoint == null) return;
-        var normalizedCmd = cmd.ToUpper().Trim();
-        var bytes = Encoding.ASCII.GetBytes(normalizedCmd + "\r");
-        OnDataSent?.Invoke(normalizedCmd);
+        var bytes = Encoding.ASCII.GetBytes(normalizedCommand + "\r");
         await _client.SendAsync(bytes, bytes.Length, _remoteEndPoint);
     }
 
@@ -115,7 +113,8 @@ public class UdpScannerBridge : IScannerBridge
         return MultiPacketXmlCommands.Contains(baseCommand);
     }
 
-    public void Dispose()
+    /// <inheritdoc/>
+    public override void Dispose()
     {
         _cts?.Cancel();
         _cts?.Dispose();

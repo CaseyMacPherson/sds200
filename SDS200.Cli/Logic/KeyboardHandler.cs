@@ -15,6 +15,7 @@ public class KeyboardHandler
     private readonly ConcurrentQueue<string> _keyboardLog;
     private readonly Queue<string> _debugLog;
     private readonly int _maxKeyboardLogSize;
+    private readonly ITimeProvider _timeProvider;
 
     // Observable state — read by the render loop
     public ViewMode ViewMode { get; set; } = ViewMode.Main;
@@ -36,16 +37,19 @@ public class KeyboardHandler
     /// <param name="bridge">Scanner bridge for sending commands (MUT, REC).</param>
     /// <param name="keyboardLog">Thread-safe queue that receives timestamped key-press log entries.</param>
     /// <param name="debugLog">High-level event log (not thread-safe — only called from the keyboard task).</param>
+    /// <param name="timeProvider">Time provider for timestamps (optional, defaults to system time).</param>
     /// <param name="maxKeyboardLogSize">Maximum entries kept in <paramref name="keyboardLog"/>.</param>
     public KeyboardHandler(
         IScannerBridge bridge,
         ConcurrentQueue<string> keyboardLog,
         Queue<string> debugLog,
+        ITimeProvider? timeProvider = null,
         int maxKeyboardLogSize = 10)
     {
-        _bridge = bridge;
-        _keyboardLog = keyboardLog;
-        _debugLog = debugLog;
+        _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
+        _keyboardLog = keyboardLog ?? throw new ArgumentNullException(nameof(keyboardLog));
+        _debugLog = debugLog ?? throw new ArgumentNullException(nameof(debugLog));
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
         _maxKeyboardLogSize = maxKeyboardLogSize;
     }
 
@@ -191,7 +195,7 @@ public class KeyboardHandler
     /// </summary>
     public async Task SendCommandAsync(string command)
     {
-        string timestamp = DateTime.Now.ToString("HH:mm:ss");
+        string timestamp = _timeProvider.Now.ToString("HH:mm:ss");
         
         // Log the sent command
         EnqueueCapped(CommandHistory, $"[{timestamp}] >> {command}", MaxCommandHistorySize);
@@ -200,7 +204,7 @@ public class KeyboardHandler
         string response = await _bridge.SendAndReceiveAsync(command, TimeSpan.FromSeconds(2));
         
         // Log the response
-        string responseTimestamp = DateTime.Now.ToString("HH:mm:ss");
+        string responseTimestamp = _timeProvider.Now.ToString("HH:mm:ss");
         if (response == "TIMEOUT")
         {
             EnqueueCapped(CommandHistory, $"[{responseTimestamp}] << [TIMEOUT - No response]", MaxCommandHistorySize);
@@ -221,7 +225,7 @@ public class KeyboardHandler
 
     private void EnqueueDebug(string message)
     {
-        _debugLog.Enqueue($"[{DateTime.Now:HH:mm:ss}] {message}");
+        _debugLog.Enqueue($"[{_timeProvider.Now:HH:mm:ss}] {message}");
         if (_debugLog.Count > 5) _debugLog.Dequeue();
     }
 

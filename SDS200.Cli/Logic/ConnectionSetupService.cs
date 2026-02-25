@@ -15,15 +15,25 @@ public class ConnectionSetupService
 {
     private readonly AppSettings _settings;
     private readonly bool _isDebugMode;
+    private readonly IScannerBridgeFactory _bridgeFactory;
+    private readonly ITimeProvider _timeProvider;
 
     /// <summary>
     /// Creates a new ConnectionSetupService.
     /// </summary>
     /// <param name="settings">Application settings for storing connection preferences.</param>
+    /// <param name="bridgeFactory">Factory for creating scanner bridges (optional, defaults to production factory).</param>
+    /// <param name="timeProvider">Time provider for timestamps (optional, defaults to system time).</param>
     /// <param name="isDebugMode">Whether running in debug mode (skips interactive prompts).</param>
-    public ConnectionSetupService(AppSettings settings, bool isDebugMode = false)
+    public ConnectionSetupService(
+        AppSettings settings,
+        IScannerBridgeFactory? bridgeFactory = null,
+        ITimeProvider? timeProvider = null,
+        bool isDebugMode = false)
     {
-        _settings = settings;
+        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _bridgeFactory = bridgeFactory ?? new ScannerBridgeFactory();
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
         _isDebugMode = isDebugMode;
     }
 
@@ -97,7 +107,7 @@ public class ConnectionSetupService
 
     private async Task<IScannerBridge> SetupUdpConnectionAsync(GsiResponseHandler responseHandler)
     {
-        var bridge = new UdpScannerBridge();
+        var bridge = _bridgeFactory.CreateUdpBridge();
 
         if (!_isDebugMode)
         {
@@ -125,7 +135,7 @@ public class ConnectionSetupService
 
     private async Task<IScannerBridge?> SetupSerialConnectionAsync(GsiResponseHandler responseHandler)
     {
-        var serialBridge = new SerialScannerBridge();
+        var bridge = _bridgeFactory.CreateSerialBridge();
 
         string? port;
         if (_isDebugMode)
@@ -143,13 +153,18 @@ public class ConnectionSetupService
         _settings.LastMode = "Serial";
 
         // Register event handlers before connecting
-        serialBridge.OnDataSent += responseHandler.OnDataSent;
-        serialBridge.OnDataReceived += responseHandler.OnDataReceived;
+        bridge.OnDataSent += responseHandler.OnDataSent;
+        bridge.OnDataReceived += responseHandler.OnDataReceived;
 
-        await serialBridge.ConnectAsync(port, _settings.LastBaudRate);
-        serialBridge.EnableEventMonitoring();
+        await bridge.ConnectAsync(port, _settings.LastBaudRate);
+        
+        // Enable event monitoring if the bridge supports it
+        if (bridge is SerialScannerBridge serialBridge)
+        {
+            serialBridge.EnableEventMonitoring();
+        }
 
-        return serialBridge;
+        return bridge;
     }
 
     private async Task<string?> DetectOrSelectPortAsync()

@@ -19,7 +19,7 @@ bool isDebugger = Debugger.IsAttached;
 if (isDebugger) Debugger.Break();
 
 // ── CONNECTION SETUP ───────────────────────────────────────────────────────────
-var connectionService = new ConnectionSetupService(settings, isDebugger);
+var connectionService = new ConnectionSetupService(settings, isDebugMode: isDebugger);
 var setupResult = await connectionService.SetupAsync(status, debugLog, rawRadioData);
 
 if (setupResult == null)

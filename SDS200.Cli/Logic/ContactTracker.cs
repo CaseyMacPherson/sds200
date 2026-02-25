@@ -1,3 +1,4 @@
+using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Abstractions.Models;
 
 namespace SDS200.Cli.Logic;
@@ -10,15 +11,21 @@ public class ContactTracker
 {
     private readonly Queue<ContactLogEntry> _contactLog;
     private readonly int _maxContactLogSize;
+    private readonly ITimeProvider _timeProvider;
 
     /// <summary>
     /// Creates a new ContactTracker.
     /// </summary>
     /// <param name="contactLog">Queue to store contact log entries.</param>
+    /// <param name="timeProvider">Time provider for timestamps (optional, defaults to system time).</param>
     /// <param name="maxContactLogSize">Maximum entries to keep (default 30).</param>
-    public ContactTracker(Queue<ContactLogEntry> contactLog, int maxContactLogSize = 30)
+    public ContactTracker(
+        Queue<ContactLogEntry> contactLog,
+        ITimeProvider? timeProvider = null,
+        int maxContactLogSize = 30)
     {
-        _contactLog = contactLog;
+        _contactLog = contactLog ?? throw new ArgumentNullException(nameof(contactLog));
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
         _maxContactLogSize = maxContactLogSize;
     }
 
@@ -36,7 +43,7 @@ public class ContactTracker
         {
             // Signal just locked on
             status.SignalLocked = true;
-            status.LastLockChangeTime = DateTime.UtcNow;
+            status.LastLockChangeTime = _timeProvider.UtcNow;
             
             var entry = ContactLogEntry.FromStatus(status);
             EnqueueCapped(entry);
@@ -45,7 +52,7 @@ public class ContactTracker
         {
             // Signal just dropped
             status.SignalLocked = false;
-            status.LastLockChangeTime = DateTime.UtcNow;
+            status.LastLockChangeTime = _timeProvider.UtcNow;
         }
     }
 
