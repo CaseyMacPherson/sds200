@@ -13,7 +13,7 @@ public static class DebugDisplayFactory
     /// Format: "[HH:mm:ss] KEY PRESSED: {keyName}"
     /// </summary>
     /// <param name="keyName">The key description (e.g., "D (Toggle Debug View)")</param>
-    /// <param name="timestamp">Optional timestamp; defaults to DateTime.Now</param>
+    /// <param name="timestamp">Timestamp obtained from <c>ITimeProvider</c>.</param>
     public static string CreateKeyboardLogEntry(string keyName, DateTime? timestamp = null)
     {
         var ts = (timestamp ?? DateTime.Now).ToString("HH:mm:ss");
@@ -25,7 +25,7 @@ public static class DebugDisplayFactory
     /// Format: "[HH:mm:ss] {data}"
     /// </summary>
     /// <param name="data">The raw radio data received (GSI response)</param>
-    /// <param name="timestamp">Optional timestamp; defaults to DateTime.Now</param>
+    /// <param name="timestamp">Timestamp obtained from <c>ITimeProvider</c>.</param>
     public static string CreateRadioDataEntry(string data, DateTime? timestamp = null)
     {
         var ts = (timestamp ?? DateTime.Now).ToString("HH:mm:ss");
@@ -38,7 +38,7 @@ public static class DebugDisplayFactory
     /// </summary>
     /// <param name="connected">Whether the scanner is currently connected</param>
     /// <param name="packetCount">Number of radio data packets received</param>
-    /// <param name="timestamp">Optional timestamp; defaults to DateTime.Now</param>
+    /// <param name="timestamp">Timestamp obtained from <c>ITimeProvider</c>.</param>
     public static string CreateStatusLine(bool connected, int packetCount, DateTime? timestamp = null)
     {
         var ts = (timestamp ?? DateTime.Now).ToString("HH:mm:ss");

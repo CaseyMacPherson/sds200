@@ -5,15 +5,16 @@ namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Renders the command mode view for sending manual commands to the scanner.
+/// Instance class so persistent widget state is not global static mutable state.
 /// </summary>
-public static class CommandViewRenderer
+public class CommandViewRenderer
 {
-    private static readonly Table _historyTable = new Table().NoBorder().HideHeaders().AddColumn("Entry").Expand();
+    private readonly Table _historyTable = new Table().NoBorder().HideHeaders().AddColumn("Entry").Expand();
 
     /// <summary>
     /// Creates the fixed layout skeleton and wires widget slots once.
     /// </summary>
-    public static Layout CreateLayout()
+    public Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -38,7 +39,7 @@ public static class CommandViewRenderer
     /// <summary>
     /// Mutates the history table rows in place and replaces the input/footer markup.
     /// </summary>
-    public static void Update(
+    public void Update(
         Layout layout,
         bool isConnected,
         string currentInput,

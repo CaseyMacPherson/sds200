@@ -3,9 +3,9 @@ using Spectre.Console;
 using SDS200.Cli.Bridges;
 using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Abstractions.Models;
-using SDS200.Cli.Presentation;
+using SDS200.Cli.Logic;
 
-namespace SDS200.Cli.Logic;
+namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Handles connection setup, mode selection, and bridge creation.

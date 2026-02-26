@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 
 namespace SDS200.Cli.Abstractions.Models;
 
@@ -32,8 +33,14 @@ public class AppSettings
             string json = File.ReadAllText(filePath);
             return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
         }
-        catch
+        catch (JsonException)
         {
+            // Corrupt settings file — return defaults
+            return new AppSettings();
+        }
+        catch (IOException)
+        {
+            // File system error — return defaults
             return new AppSettings();
         }
     }

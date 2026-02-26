@@ -43,25 +43,47 @@ public class SerialScannerBridge : ScannerBridgeBase
     /// Enables event monitoring so that <see cref="ScannerBridgeBase.OnDataReceived"/>
     /// fires for every inbound line (not just responses to SendAndReceiveAsync).
     /// For Serial transport this is always active once the port is open —
-    /// the method is kept for API parity with callers in <see cref="Logic.ConnectionSetupService"/>.
+    /// the method is kept for API parity with callers in <see cref="Presentation.ConnectionSetupService"/>.
     /// </summary>
     public void EnableEventMonitoring() { /* no-op: SerialDataReceiver always fires events */ }
 
     /// <summary>Disables event monitoring (no-op on Serial — kept for API symmetry).</summary>
     public void DisableEventMonitoring() { }
 
+    /// <summary>
+    /// Commands that return multi-line XML responses over serial.
+    /// These responses span multiple \r-delimited lines and must be
+    /// accumulated until the closing tag is received.
+    /// </summary>
+    private static readonly HashSet<string> XmlCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GSI", "PSI", "MSI", "GLT"
+    };
+
     /// <inheritdoc/>
     protected override async Task<string> SendAndReceiveCoreAsync(string normalizedCommand, TimeSpan timeout)
     {
         if (!IsConnected || _dataReceiver == null) return "DISCONNECTED";
 
+        var isXmlCommand = IsXmlCommand(normalizedCommand);
+        var effectiveTimeout = isXmlCommand ? TimeSpan.FromSeconds(Math.Max(timeout.TotalSeconds, 5)) : timeout;
+
         var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _dataReceiver.ExpectResponse(tcs, isXmlCommand: false);
+        _dataReceiver.ExpectResponse(tcs, isXmlCommand);
 
         _port!.Write(normalizedCommand + "\r");
 
-        var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
+        var completed = await Task.WhenAny(tcs.Task, Task.Delay(effectiveTimeout));
         return completed == tcs.Task ? await tcs.Task : "TIMEOUT";
+    }
+
+    /// <summary>
+    /// Determines if a command returns multi-line XML responses.
+    /// </summary>
+    private static bool IsXmlCommand(string command)
+    {
+        var baseCommand = command.Split(',')[0].Trim();
+        return XmlCommands.Contains(baseCommand);
     }
 
     /// <inheritdoc/>

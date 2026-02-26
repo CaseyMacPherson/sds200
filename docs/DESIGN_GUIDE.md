@@ -226,7 +226,6 @@ SDS200.Cli/
 ├── Logic/                 # Business logic and services
 │   ├── UnidenParser.cs
 │   ├── ContactTracker.cs
-│   ├── ConnectionSetupService.cs
 │   ├── KeyboardHandler.cs
 │   └── FileLogger.cs
 ├── Models/                # Data structures
@@ -238,6 +237,7 @@ SDS200.Cli/
 │   ├── DebugViewRenderer.cs
 │   ├── CommandViewRenderer.cs
 │   ├── MenuViewRenderer.cs
+│   ├── ConnectionSetupService.cs
 │   ├── MarkupConstants.cs
 │   └── DebugDisplayFactory.cs
 └── Program.cs             # Entry point and orchestration

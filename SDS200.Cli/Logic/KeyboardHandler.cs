@@ -62,7 +62,7 @@ public class KeyboardHandler
         while (!cancellationToken.IsCancellationRequested)
         {
             await PollKeysAsync();
-            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(50, cancellationToken);
         }
     }
 

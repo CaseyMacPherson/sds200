@@ -35,19 +35,24 @@ var contactTracker = new ContactTracker(contactLog);
 // Console handle contention with Spectre.Console's cursor positioning.
 var keyboard = new KeyboardHandler(bridge, keyboardInputLog, debugLog);
 
-// ── LAYOUT INSTANCES — created once, mutated in place each frame ───────────────
+// ── RENDERER INSTANCES — created once, own their persistent Table widgets ──────
 // Spectre.Console Live tracks the rendered shape (_shape) to know how many lines
 // to cursor-up before redrawing. Passing a new Layout each frame discards that
 // baseline, causing every lower panel to flash on every redraw cycle.
 // The fix: own one Layout per view mode, update its panels, then call ctx.Refresh().
-var mainLayout    = MainViewRenderer.CreateLayout();
-var debugLayout   = DebugViewRenderer.CreateLayout();
-var menuLayout    = MenuViewRenderer.CreateLayout();
-var commandLayout = CommandViewRenderer.CreateLayout();
+var mainRenderer    = new MainViewRenderer();
+var debugRenderer   = new DebugViewRenderer();
+var menuRenderer    = new MenuViewRenderer();
+var commandRenderer = new CommandViewRenderer();
+
+var mainLayout    = mainRenderer.CreateLayout();
+var debugLayout   = debugRenderer.CreateLayout();
+var menuLayout    = menuRenderer.CreateLayout();
+var commandLayout = commandRenderer.CreateLayout();
 
 // Seed initial content so Live has a valid first render
 var initialSnap = status.Snapshot();
-MainViewRenderer.Update(mainLayout, initialSnap, bridge.IsConnected, contactTracker.GetContacts(), false);
+mainRenderer.Update(mainLayout, initialSnap, bridge.IsConnected, contactTracker.GetContacts(), false);
 
 // ── SYNCHRONIZED OUTPUT ────────────────────────────────────────────────────────
 // ANSI Mode 2026 tells the terminal to buffer all output between Begin/End and
@@ -91,7 +96,7 @@ await AnsiConsole.Live(mainLayout)
             // Skip polling when in Command mode — let the user control the communication
             if (keyboard.ViewMode == ViewMode.Command)
             {
-                CommandViewRenderer.Update(commandLayout, bridge.IsConnected, keyboard.CommandInput, keyboard.CommandHistory);
+                commandRenderer.Update(commandLayout, bridge.IsConnected, keyboard.CommandInput, keyboard.CommandHistory);
                 if (!ReferenceEquals(activeLayout, commandLayout)) { SyncUpdateTarget(ctx, commandLayout); activeLayout = commandLayout; }
                 else SyncRefresh(ctx);
                 await Task.Delay(100);
@@ -128,19 +133,19 @@ await AnsiConsole.Live(mainLayout)
             // Mutate the correct layout in place then refresh with synchronized output.
             if (keyboard.ViewMode == ViewMode.Debug)
             {
-                DebugViewRenderer.Update(debugLayout, bridge.IsConnected, rawRadioData, keyboardInputLog, keyboard.SpacebarHeld);
+                debugRenderer.Update(debugLayout, bridge.IsConnected, rawRadioData, keyboardInputLog, keyboard.SpacebarHeld);
                 if (!ReferenceEquals(activeLayout, debugLayout)) { SyncUpdateTarget(ctx, debugLayout); activeLayout = debugLayout; }
                 else SyncRefresh(ctx);
             }
             else if (MenuViewRenderer.IsMenuMode(snap))
             {
-                MenuViewRenderer.Update(menuLayout, snap, bridge.IsConnected, keyboard.SpacebarHeld);
+                menuRenderer.Update(menuLayout, snap, bridge.IsConnected, keyboard.SpacebarHeld);
                 if (!ReferenceEquals(activeLayout, menuLayout)) { SyncUpdateTarget(ctx, menuLayout); activeLayout = menuLayout; }
                 else SyncRefresh(ctx);
             }
             else
             {
-                MainViewRenderer.Update(mainLayout, snap, bridge.IsConnected, contactTracker.GetContacts(), keyboard.SpacebarHeld);
+                mainRenderer.Update(mainLayout, snap, bridge.IsConnected, contactTracker.GetContacts(), keyboard.SpacebarHeld);
                 if (!ReferenceEquals(activeLayout, mainLayout)) { SyncUpdateTarget(ctx, mainLayout); activeLayout = mainLayout; }
                 else SyncRefresh(ctx);
             }

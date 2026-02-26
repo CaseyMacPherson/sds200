@@ -12,7 +12,9 @@ public sealed class SerialDataReceiver : IDataReceiver
 {
     private readonly SerialPort _port;
     private readonly StringBuilder _buffer = new();
+    private readonly StringBuilder _xmlAccumulator = new();
     private TaskCompletionSource<string>? _responseTcs;
+    private bool _expectingXml;
     private readonly object _lock = new();
     private bool _running;
 
@@ -25,11 +27,14 @@ public sealed class SerialDataReceiver : IDataReceiver
 
     public void ExpectResponse(TaskCompletionSource<string> tcs, bool isXmlCommand)
     {
-        // Serial protocol doesn't need special handling for XML commands
-        // as responses still arrive character-by-character with \r delimiters
         lock (_lock)
         {
             _responseTcs = tcs;
+            _expectingXml = isXmlCommand;
+            if (isXmlCommand)
+            {
+                _xmlAccumulator.Clear();
+            }
         }
     }
 
@@ -66,7 +71,24 @@ public sealed class SerialDataReceiver : IDataReceiver
                     _buffer.Clear();
 
                     OnMessageReceived?.Invoke(fullLine);
-                    _responseTcs?.TrySetResult(fullLine);
+
+                    if (_expectingXml && _responseTcs != null)
+                    {
+                        // Accumulate lines until the complete XML document arrives
+                        _xmlAccumulator.AppendLine(fullLine);
+
+                        if (fullLine.Contains("</ScannerInfo>", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var completeResponse = _xmlAccumulator.ToString().TrimEnd();
+                            _xmlAccumulator.Clear();
+                            _expectingXml = false;
+                            _responseTcs.TrySetResult(completeResponse);
+                        }
+                    }
+                    else
+                    {
+                        _responseTcs?.TrySetResult(fullLine);
+                    }
                 }
                 else
                 {

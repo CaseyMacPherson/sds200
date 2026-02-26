@@ -5,26 +5,27 @@ namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Renders the main scanning view with frequency display, identity info, and contacts.
-/// All layout slots are wired once in CreateLayout(). Update() only mutates table rows
-/// and markup text in place — no new widget objects are created per frame.
+/// All layout slots are wired once in <see cref="CreateLayout"/>. <see cref="Update"/> only
+/// mutates table rows and markup text in place — no new widget objects are created per frame.
+/// Instance class so persistent widget state is not global static mutable state.
 /// </summary>
-public static class MainViewRenderer
+public class MainViewRenderer
 {
-    // All persistent widgets — created once, mutated each frame
-    private static readonly Table _identityTable = new Table().NoBorder().HideHeaders().AddColumns("L", "V");
-    private static readonly Table _contactTable  = new Table().NoBorder().HideHeaders().AddColumns("Freq", "Mode", "ID", "Dur");
-    private static readonly Table _rssiTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
-    private static readonly Table _heroTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
-    private static readonly Table _hotkeysTable  = new Table().NoBorder().HideHeaders().AddColumns("V");
-    private static readonly Table _footerTable   = new Table().NoBorder().HideHeaders().AddColumns("V");
+    // All persistent widgets — created once per instance, mutated each frame
+    private readonly Table _identityTable = new Table().NoBorder().HideHeaders().AddColumns("L", "V");
+    private readonly Table _contactTable  = new Table().NoBorder().HideHeaders().AddColumns("Freq", "Mode", "ID", "Dur");
+    private readonly Table _rssiTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private readonly Table _heroTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private readonly Table _hotkeysTable  = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private readonly Table _footerTable   = new Table().NoBorder().HideHeaders().AddColumns("V");
 
     // Track last values to avoid replacing Panel objects unless the header text actually changed
-    private static string _lastModeLabel = string.Empty;
+    private string _lastModeLabel = string.Empty;
 
     /// <summary>
     /// Creates the fixed layout skeleton and wires all widget slots once.
     /// </summary>
-    public static Layout CreateLayout()
+    public Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -48,7 +49,7 @@ public static class MainViewRenderer
     /// <summary>
     /// Mutates all persistent table rows in place — no new widget objects created.
     /// </summary>
-    public static void Update(
+    public void Update(
         Layout layout,
         ScannerStatus status,
         bool isConnected,
@@ -112,7 +113,7 @@ public static class MainViewRenderer
         _footerTable.AddRow(new Markup($"{connText}{statusExtra}{ledExtra}"));
     }
 
-    private static void AddIdentityRows(Table info, ScannerStatus s)
+    private void AddIdentityRows(Table info, ScannerStatus s)
     {
         switch (s.VScreen)
         {

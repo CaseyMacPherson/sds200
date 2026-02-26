@@ -113,7 +113,7 @@ All UI strings come from `MarkupConstants.cs`.
 | `Bridges/`      | Transport implementations        | `UdpScannerBridge.cs`             |
 | `Logic/`        | Business logic, services         | `UnidenParser.cs`                 |
 | `Models/`       | Data structures (POCOs)          | `ScannerStatus.cs`                |
-| `Presentation/` | Spectre.Console rendering        | `MainViewRenderer.cs`             |
+| `Presentation/` | Spectre.Console rendering, setup UI | `MainViewRenderer.cs`, `ConnectionSetupService.cs` |
 | `Tests/`        | xUnit test project               | `UnidenParserTests.cs`            |
 
 ## Examples of Good vs Bad Code

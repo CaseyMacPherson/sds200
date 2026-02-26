@@ -117,8 +117,12 @@ public static class MarkupConstants
     public const string LogMuteToggle = "Mute toggle (TODO)";
     public const string LogVolumeAdjust = "Volume adjust (TODO)";
 
-    public static string FormatDebugLogEntry(string message) =>
-        $"[{DateTime.Now:HH:mm:ss}] {message}";
+    /// <summary>
+    /// Formats a debug log entry with a pre-formatted timestamp.
+    /// Callers should obtain the timestamp from <c>ITimeProvider</c>.
+    /// </summary>
+    public static string FormatDebugLogEntry(DateTime timestamp, string message) =>
+        $"[{timestamp:HH:mm:ss}] {message}";
 
     public static string FormatDebugLogDisplay(string logEntry) =>
         $"[grey]{Spectre.Console.Markup.Escape(logEntry)}[/]";

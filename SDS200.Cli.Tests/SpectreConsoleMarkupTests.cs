@@ -188,7 +188,7 @@ public class SpectreConsoleMarkupTests
         // Act & Assert - All can be formatted into log entries
         foreach (var logMsg in logStrings)
         {
-            string logEntry = MarkupConstants.FormatDebugLogEntry(logMsg);
+            string logEntry = MarkupConstants.FormatDebugLogEntry(DateTime.Now, logMsg);
             string display = MarkupConstants.FormatDebugLogDisplay(logEntry);
             var markup = new Markup(display);
             Assert.NotNull(markup);

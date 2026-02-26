@@ -5,15 +5,16 @@ namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Renders the menu view when the scanner is in menu mode or displaying a popup.
+/// Instance class so persistent widget state is not global static mutable state.
 /// </summary>
-public static class MenuViewRenderer
+public class MenuViewRenderer
 {
-    private static readonly Table _menuTable = new Table().NoBorder().HideHeaders().AddColumns("Line");
+    private readonly Table _menuTable = new Table().NoBorder().HideHeaders().AddColumns("Line");
 
     /// <summary>
     /// Creates the fixed layout skeleton for the menu view and wires widget slots once.
     /// </summary>
-    public static Layout CreateLayout()
+    public Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -32,7 +33,7 @@ public static class MenuViewRenderer
     /// <summary>
     /// Mutates the menu table rows in place and replaces immutable panel slots.
     /// </summary>
-    public static void Update(Layout layout, ScannerStatus status, bool isConnected, bool spacebarHeld)
+    public void Update(Layout layout, ScannerStatus status, bool isConnected, bool spacebarHeld)
     {
         string modeDisplay = !string.IsNullOrEmpty(status.MenuTitle)
             ? status.MenuTitle
@@ -158,4 +159,3 @@ public static class MenuViewRenderer
         return status.IsInMenu || !string.IsNullOrEmpty(status.PopupText);
     }
 }
-

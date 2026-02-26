@@ -7,16 +7,17 @@ namespace SDS200.Cli.Presentation;
 /// Renders the debug view showing raw radio traffic and keyboard input.
 /// Follows the Spectre.Console Live pattern: persistent Table mutated via
 /// Rows.Clear() + AddRow() each frame rather than creating new widget objects.
+/// Instance class so persistent widget state is not global static mutable state.
 /// </summary>
-public static class DebugViewRenderer
+public class DebugViewRenderer
 {
-    private static readonly Table _debugTable = new Table().NoBorder().HideHeaders()
+    private readonly Table _debugTable = new Table().NoBorder().HideHeaders()
         .AddColumns("Keyboard Input", "Raw Radio Traffic");
 
     /// <summary>
     /// Creates the fixed layout skeleton and wires all widget slots once.
     /// </summary>
-    public static Layout CreateLayout()
+    public Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -33,7 +34,7 @@ public static class DebugViewRenderer
     /// <summary>
     /// Mutates the debug table rows in place and replaces the status/footer markup.
     /// </summary>
-    public static void Update(
+    public void Update(
         Layout layout,
         bool isConnected,
         ConcurrentQueue<string> rawRadioData,

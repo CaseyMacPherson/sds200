@@ -1,3 +1,4 @@
+using System.Xml;
 using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Abstractions.Models;
 
@@ -112,8 +113,14 @@ public class UnidenParser : IResponseParser
 
             return true;
         }
-        catch
+        catch (XmlException)
         {
+            // Malformed XML from scanner — transient, return false
+            return false;
+        }
+        catch (FormatException)
+        {
+            // Unexpected attribute format — transient, return false
             return false;
         }
     }
