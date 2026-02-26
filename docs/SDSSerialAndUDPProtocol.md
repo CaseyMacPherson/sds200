@@ -284,6 +284,7 @@ The following is an example response from the GSI command, showing the scanner's
         <PopupScreen Text="Quick Save?\n" />
     </ViewDescription>
 </ScannerInfo>
+```
 
 ---------------------------------------------------------------------------------------------------------------------------------------
 GLT Get xxx list
