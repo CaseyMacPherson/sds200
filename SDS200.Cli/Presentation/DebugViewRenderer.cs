@@ -1,83 +1,75 @@
 using System.Collections.Concurrent;
 using Spectre.Console;
-using Spectre.Console.Rendering;
 
 namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Renders the debug view showing raw radio traffic and keyboard input.
+/// Follows the Spectre.Console Live pattern: persistent Table mutated via
+/// Rows.Clear() + AddRow() each frame rather than creating new widget objects.
 /// </summary>
 public static class DebugViewRenderer
 {
+    private static readonly Table _debugTable = new Table().NoBorder().HideHeaders()
+        .AddColumns("Keyboard Input", "Raw Radio Traffic");
+
     /// <summary>
-    /// Renders the debug view layout.
+    /// Creates the fixed layout skeleton and wires all widget slots once.
     /// </summary>
-    /// <param name="isConnected">Whether the scanner is connected.</param>
-    /// <param name="rawRadioData">Thread-safe queue of raw radio data entries.</param>
-    /// <param name="keyboardInputLog">Thread-safe queue of keyboard input entries.</param>
-    /// <param name="spacebarHeld">Whether the spacebar is being held (for expanded hotkeys).</param>
-    /// <returns>A Layout containing the debug view.</returns>
-    public static Layout Render(
-        bool isConnected,
-        ConcurrentQueue<string> rawRadioData,
-        ConcurrentQueue<string> keyboardInputLog,
-        bool spacebarHeld)
+    public static Layout CreateLayout()
     {
-        // Status header showing connection and data counts
-        string statusLine = DebugDisplayFactory.CreateStatusLine(isConnected, rawRadioData.Count);
-
-        // Build table with raw radio data and keyboard input
-        var debugTable = new Table().NoBorder().HideHeaders().AddColumns("Keyboard Input", "Raw Radio Traffic");
-
-        // Snapshot both queues (thread-safe ToArray on ConcurrentQueue)
-        var keyboardList = keyboardInputLog.ToArray();
-        var radioList = rawRadioData.ToArray();
-        int maxRows = Math.Max(keyboardList.Length, radioList.Length);
-
-        if (maxRows == 0)
-        {
-            debugTable.AddRow(
-                new Markup(MarkupConstants.NoKeyboardInput),
-                new Markup(MarkupConstants.NoRadioData)
-            );
-        }
-        else
-        {
-            for (int i = 0; i < maxRows; i++)
-            {
-                string keyInput = i < keyboardList.Length
-                    ? DebugDisplayFactory.EscapeForDisplay(keyboardList[i])
-                    : "";
-                string radioData = i < radioList.Length
-                    ? DebugDisplayFactory.EscapeForDisplay(radioList[i])
-                    : "";
-
-                debugTable.AddRow(
-                    new Markup(keyInput),
-                    new Markup(radioData)
-                );
-            }
-        }
-
-        var debugLayout = new Layout("Root")
+        var layout = new Layout("Root")
             .SplitRows(
                 new Layout("Status").Size(3),
                 new Layout("Data"),
                 new Layout("Footer").Size(1)
             );
 
-        debugLayout["Status"].Update(new Panel(
-            new Markup(statusLine).LeftJustified()
+        layout["Data"].Update(new Panel(_debugTable).Expand());
+
+        return layout;
+    }
+
+    /// <summary>
+    /// Mutates the debug table rows in place and replaces the status/footer markup.
+    /// </summary>
+    public static void Update(
+        Layout layout,
+        bool isConnected,
+        ConcurrentQueue<string> rawRadioData,
+        ConcurrentQueue<string> keyboardInputLog,
+        bool spacebarHeld)
+    {
+        layout["Status"].Update(new Panel(
+            new Markup(DebugDisplayFactory.CreateStatusLine(isConnected, rawRadioData.Count)).LeftJustified()
         ).Border(BoxBorder.Rounded));
 
-        debugLayout["Data"].Update(new Panel(debugTable).Expand());
+        var keyboardList = keyboardInputLog.ToArray();
+        var radioList = rawRadioData.ToArray();
+        int maxRows = Math.Max(keyboardList.Length, radioList.Length);
 
-        string hotkeyTxt = spacebarHeld
+        _debugTable.Rows.Clear();
+
+        if (maxRows == 0)
+        {
+            _debugTable.AddRow(
+                new Markup(MarkupConstants.NoKeyboardInput),
+                new Markup(MarkupConstants.NoRadioData));
+        }
+        else
+        {
+            for (int i = 0; i < maxRows; i++)
+            {
+                string keyInput = i < keyboardList.Length
+                    ? DebugDisplayFactory.EscapeForDisplay(keyboardList[i]) : "";
+                string radioData = i < radioList.Length
+                    ? DebugDisplayFactory.EscapeForDisplay(radioList[i]) : "";
+                _debugTable.AddRow(new Markup(keyInput), new Markup(radioData));
+            }
+        }
+
+        layout["Footer"].Update(new Markup(spacebarHeld
             ? MarkupConstants.HotkeyDebugExpanded
-            : MarkupConstants.HotkeyDebugCompact;
-        debugLayout["Footer"].Update(new Markup(hotkeyTxt).LeftJustified());
-
-        return debugLayout;
+            : MarkupConstants.HotkeyDebugCompact).LeftJustified());
     }
 }
-

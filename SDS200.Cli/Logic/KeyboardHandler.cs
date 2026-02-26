@@ -61,13 +61,22 @@ public class KeyboardHandler
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true);
-                await HandleKeyAsync(key);
-            }
-
+            await PollKeysAsync();
             await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Non-blocking: drains all available keys from the console input buffer.
+    /// Call this on the **same thread** as Spectre.Console Live to avoid
+    /// console handle contention that causes display flashing.
+    /// </summary>
+    public async Task PollKeysAsync()
+    {
+        while (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(true);
+            await HandleKeyAsync(key);
         }
     }
 

@@ -8,14 +8,12 @@ namespace SDS200.Cli.Presentation;
 /// </summary>
 public static class MenuViewRenderer
 {
+    private static readonly Table _menuTable = new Table().NoBorder().HideHeaders().AddColumns("Line");
+
     /// <summary>
-    /// Renders the menu/popup view layout.
+    /// Creates the fixed layout skeleton for the menu view and wires widget slots once.
     /// </summary>
-    /// <param name="status">Current scanner status with menu info.</param>
-    /// <param name="isConnected">Whether the scanner is connected.</param>
-    /// <param name="spacebarHeld">Whether the spacebar is being held (for expanded hotkeys).</param>
-    /// <returns>A Layout containing the menu view.</returns>
-    public static Layout Render(ScannerStatus status, bool isConnected, bool spacebarHeld)
+    public static Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -26,66 +24,56 @@ public static class MenuViewRenderer
                 new Layout("Footer").Size(3)
             );
 
-        // Header - show current mode
-        string modeDisplay = !string.IsNullOrEmpty(status.MenuTitle) 
-            ? status.MenuTitle 
+        layout["Content"].Update(new Panel(_menuTable).Expand());
+
+        return layout;
+    }
+
+    /// <summary>
+    /// Mutates the menu table rows in place and replaces immutable panel slots.
+    /// </summary>
+    public static void Update(Layout layout, ScannerStatus status, bool isConnected, bool spacebarHeld)
+    {
+        string modeDisplay = !string.IsNullOrEmpty(status.MenuTitle)
+            ? status.MenuTitle
             : status.Mode;
         layout["Header"].Update(new Panel(
             new Markup($"[bold cyan]{Markup.Escape(modeDisplay)}[/]").Centered()
         ).Header(MarkupConstants.HeaderMenu).Border(BoxBorder.Double));
 
-        // Content - show menu items / info lines
-        var menuTable = BuildMenuTable(status);
-        layout["Content"].Update(new Panel(menuTable).Expand());
+        // Mutate menu table rows in place
+        _menuTable.Rows.Clear();
+        if (status.InfoLines.Count == 0)
+        {
+            _menuTable.AddRow(new Markup(MarkupConstants.NoMenuInfo));
+        }
+        else
+        {
+            foreach (var line in status.InfoLines)
+                _menuTable.AddRow(new Markup(FormatMenuLine(line)));
+        }
 
-        // Popup - show popup text if present
         if (!string.IsNullOrEmpty(status.PopupText))
         {
-            var popupPanel = new Panel(
+            layout["Popup"].Update(new Panel(
                 new Markup($"[bold yellow]{Markup.Escape(status.PopupText)}[/]").Centered()
-            ).Header(MarkupConstants.HeaderPrompt).Border(BoxBorder.Rounded);
-            layout["Popup"].Update(popupPanel);
+            ).Header(MarkupConstants.HeaderPrompt).Border(BoxBorder.Rounded));
         }
         else
         {
             layout["Popup"].Update(new Panel(new Markup(MarkupConstants.NoActivePrompt)).Border(BoxBorder.None));
         }
 
-        // Hotkey panel
-        string hotkeyText = spacebarHeld
+        layout["Hotkeys"].Update(new Markup(spacebarHeld
             ? MarkupConstants.HotkeyMainExpanded
-            : MarkupConstants.HotkeyMainCompact;
-        layout["Hotkeys"].Update(new Markup(hotkeyText).LeftJustified());
+            : MarkupConstants.HotkeyMainCompact).LeftJustified());
 
-        // Footer with connection status
         string connText = MarkupConstants.FormatConnectionStatus(isConnected);
         layout["Footer"].Update(new Panel(
             new Markup($"{connText}  {MarkupConstants.MenuModeIndicator}"))
             .Border(BoxBorder.None));
-
-        return layout;
     }
 
-    private static Table BuildMenuTable(ScannerStatus status)
-    {
-        var table = new Table().NoBorder().HideHeaders().AddColumns("Line");
-        
-        if (status.InfoLines.Count == 0)
-        {
-            table.AddRow(new Markup(MarkupConstants.NoMenuInfo));
-            return table;
-        }
-
-        // Parse and render each info line
-        // Lines often contain markers like '*' for selection or special formatting
-        foreach (var line in status.InfoLines)
-        {
-            string formattedLine = FormatMenuLine(line);
-            table.AddRow(new Markup(formattedLine));
-        }
-
-        return table;
-    }
 
     /// <summary>
     /// Formats a menu line with proper highlighting.

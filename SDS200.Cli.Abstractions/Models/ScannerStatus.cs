@@ -57,5 +57,11 @@ public class ScannerStatus
 
     // UI state
     public string LastCommandSent { get; set; } = "None";
+
+    /// <summary>
+    /// Returns a shallow copy of the current status for thread-safe rendering.
+    /// Call this on the reader side to avoid tearing from concurrent writes.
+    /// </summary>
+    public ScannerStatus Snapshot() => (ScannerStatus)MemberwiseClone();
 }
 

@@ -66,7 +66,8 @@ public class ContactLogEntryTests
         // Arrange
         var entry = new ContactLogEntry
         {
-            LockTime = DateTime.UtcNow.AddSeconds(-5)
+            LockTime = DateTime.UtcNow.AddSeconds(-5),
+            Frequency = 0d
         };
 
         // Act
@@ -82,7 +83,8 @@ public class ContactLogEntryTests
         // Arrange
         var entry = new ContactLogEntry
         {
-            LockTime = DateTime.UtcNow.AddSeconds(-2)
+            LockTime = DateTime.UtcNow.AddSeconds(-2),
+            Frequency = 0d
         };
 
         // Act
@@ -97,8 +99,8 @@ public class ContactLogEntryTests
     [Fact]
     public void Constructor_InitializesDefaults()
     {
-        // Act
-        var entry = new ContactLogEntry();
+        // Act — required fields must be supplied; all string props default to "---" / "S0"
+        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow, Frequency = 0d };
 
         // Assert
         Assert.Equal(0d, entry.Frequency);
@@ -150,8 +152,8 @@ public class ContactLogEntryTests
     public void ZeroDurationAtCreation()
     {
         // Arrange & Act
-        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow };
-        
+        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow, Frequency = 0d };
+
         // Assert
         Assert.True(entry.DurationSeconds >= 0 && entry.DurationSeconds < 0.1);
     }
@@ -163,7 +165,7 @@ public class ContactLogEntryTests
     public void StoresModulationType(string modType)
     {
         // Arrange
-        var entry = new ContactLogEntry { Modulation = modType };
+        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow, Frequency = 0d, Modulation = modType };
 
         // Assert
         Assert.Equal(modType, entry.Modulation);
@@ -177,7 +179,7 @@ public class ContactLogEntryTests
     public void StoresModeType(string modeType)
     {
         // Arrange
-        var entry = new ContactLogEntry { Mode = modeType };
+        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow, Frequency = 0d, Mode = modeType };
 
         // Assert
         Assert.Equal(modeType, entry.Mode);
@@ -188,7 +190,7 @@ public class ContactLogEntryTests
     {
         // Arrange
         const double freq = 154.2875d;
-        var entry = new ContactLogEntry { Frequency = freq };
+        var entry = new ContactLogEntry { LockTime = DateTime.UtcNow, Frequency = freq };
 
         // Act
         var retrieved = entry.Frequency;

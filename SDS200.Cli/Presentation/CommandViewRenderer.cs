@@ -8,17 +8,12 @@ namespace SDS200.Cli.Presentation;
 /// </summary>
 public static class CommandViewRenderer
 {
+    private static readonly Table _historyTable = new Table().NoBorder().HideHeaders().AddColumn("Entry").Expand();
+
     /// <summary>
-    /// Renders the command view layout.
+    /// Creates the fixed layout skeleton and wires widget slots once.
     /// </summary>
-    /// <param name="isConnected">Whether the scanner is connected.</param>
-    /// <param name="currentInput">Current command being typed.</param>
-    /// <param name="commandHistory">History of sent commands and responses.</param>
-    /// <returns>A Layout containing the command view.</returns>
-    public static Layout Render(
-        bool isConnected,
-        string currentInput,
-        ConcurrentQueue<string> commandHistory)
+    public static Layout CreateLayout()
     {
         var layout = new Layout("Root")
             .SplitRows(
@@ -28,57 +23,49 @@ public static class CommandViewRenderer
                 new Layout("Footer").Size(1)
             );
 
-        // Header - title and instructions
+        // Wire the static header (never changes) and persistent history table once
         var headerContent = new Rows(
             new Markup(MarkupConstants.HeaderCommand).Centered(),
             new Text(""),
             new Markup(MarkupConstants.CommandModeInstructions).Centered()
         );
         layout["Header"].Update(new Panel(headerContent).Border(BoxBorder.Double));
+        layout["History"].Update(new Panel(_historyTable).Header("[bold]Command History[/]").Expand());
 
-        // History - command/response log
-        var historyTable = BuildHistoryTable(commandHistory);
-        layout["History"].Update(new Panel(historyTable)
-            .Header("[bold]Command History[/]")
-            .Expand());
+        return layout;
+    }
 
-        // Input - current command being typed
+    /// <summary>
+    /// Mutates the history table rows in place and replaces the input/footer markup.
+    /// </summary>
+    public static void Update(
+        Layout layout,
+        bool isConnected,
+        string currentInput,
+        ConcurrentQueue<string> commandHistory)
+    {
+        // Mutate history table in place
+        _historyTable.Rows.Clear();
+        var historyList = commandHistory.ToArray();
+        if (historyList.Length == 0)
+        {
+            _historyTable.AddRow(new Markup(MarkupConstants.NoCommandHistory));
+        }
+        else
+        {
+            foreach (var entry in historyList.TakeLast(30))
+                _historyTable.AddRow(new Markup(FormatHistoryEntry(entry)));
+        }
+
         string inputDisplay = $"{MarkupConstants.CommandInputPrompt}[bold white]{Markup.Escape(currentInput)}[/][blink]_[/]";
         layout["Input"].Update(new Panel(new Markup(inputDisplay))
             .Header("[bold]Input[/]")
             .Border(BoxBorder.Rounded));
 
-        // Footer - connection status and hotkey hint
         string connText = MarkupConstants.FormatConnectionStatus(isConnected);
         layout["Footer"].Update(new Markup($"{connText}  {MarkupConstants.HotkeyCommandMode}").LeftJustified());
-
-        return layout;
     }
 
-    private static Table BuildHistoryTable(ConcurrentQueue<string> commandHistory)
-    {
-        var table = new Table().NoBorder().HideHeaders().AddColumn("Entry").Expand();
-        
-        var historyList = commandHistory.ToArray();
-        
-        if (historyList.Length == 0)
-        {
-            table.AddRow(new Markup(MarkupConstants.NoCommandHistory));
-            return table;
-        }
-
-        // Show history with color coding - reverse to show newest at bottom (natural scroll)
-        // Take last entries that fit in the view (approximately)
-        var recentHistory = historyList.TakeLast(30).ToArray();
-        
-        foreach (var entry in recentHistory)
-        {
-            string formattedEntry = FormatHistoryEntry(entry);
-            table.AddRow(new Markup(formattedEntry));
-        }
-
-        return table;
-    }
 
     /// <summary>
     /// Formats a history entry with appropriate colors.

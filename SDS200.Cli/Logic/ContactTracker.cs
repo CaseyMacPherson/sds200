@@ -45,7 +45,7 @@ public class ContactTracker
             status.SignalLocked = true;
             status.LastLockChangeTime = _timeProvider.UtcNow;
             
-            var entry = ContactLogEntry.FromStatus(status);
+            var entry = ContactLogEntry.FromStatus(status, _timeProvider.UtcNow);
             EnqueueCapped(entry);
         }
         else if (!signalPresent && status.SignalLocked)

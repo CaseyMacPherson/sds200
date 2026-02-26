@@ -13,7 +13,7 @@ var debugLog = new Queue<string>();
 var contactLog = new Queue<ContactLogEntry>();
 var rawRadioData = new ConcurrentQueue<string>();
 var keyboardInputLog = new ConcurrentQueue<string>();
-var keyboardCts = new CancellationTokenSource();
+var fileLogger = new FileLogger();
 
 bool isDebugger = Debugger.IsAttached;
 if (isDebugger) Debugger.Break();
@@ -31,86 +31,124 @@ var bridge = setupResult.Bridge;
 var contactTracker = new ContactTracker(contactLog);
 
 // ── KEYBOARD HANDLER ───────────────────────────────────────────────────────────
+// Keyboard is polled on the main thread inside the Live loop to avoid
+// Console handle contention with Spectre.Console's cursor positioning.
 var keyboard = new KeyboardHandler(bridge, keyboardInputLog, debugLog);
-var keyboardTask = Task.Run(() => keyboard.RunAsync(keyboardCts.Token));
+
+// ── LAYOUT INSTANCES — created once, mutated in place each frame ───────────────
+// Spectre.Console Live tracks the rendered shape (_shape) to know how many lines
+// to cursor-up before redrawing. Passing a new Layout each frame discards that
+// baseline, causing every lower panel to flash on every redraw cycle.
+// The fix: own one Layout per view mode, update its panels, then call ctx.Refresh().
+var mainLayout    = MainViewRenderer.CreateLayout();
+var debugLayout   = DebugViewRenderer.CreateLayout();
+var menuLayout    = MenuViewRenderer.CreateLayout();
+var commandLayout = CommandViewRenderer.CreateLayout();
+
+// Seed initial content so Live has a valid first render
+var initialSnap = status.Snapshot();
+MainViewRenderer.Update(mainLayout, initialSnap, bridge.IsConnected, contactTracker.GetContacts(), false);
+
+// ── SYNCHRONIZED OUTPUT ────────────────────────────────────────────────────────
+// ANSI Mode 2026 tells the terminal to buffer all output between Begin/End and
+// paint it atomically as one screen update. Without this, terminals like Windows
+// Terminal paint each line as it arrives — causing visible flicker on large layouts.
+const string SyncBegin = "\x1b[?2026h";
+const string SyncEnd   = "\x1b[?2026l";
+
+/// <summary>Wraps a Spectre Live refresh in synchronized output markers.</summary>
+void SyncRefresh(LiveDisplayContext ctx)
+{
+    Console.Write(SyncBegin);
+    ctx.Refresh();
+    Console.Write(SyncEnd);
+    Console.Out.Flush();
+}
+
+/// <summary>Wraps a Spectre Live target swap in synchronized output markers.</summary>
+void SyncUpdateTarget(LiveDisplayContext ctx, Layout target)
+{
+    Console.Write(SyncBegin);
+    ctx.UpdateTarget(target);
+    Console.Write(SyncEnd);
+    Console.Out.Flush();
+}
 
 // ── MAIN POLLING LOOP ──────────────────────────────────────────────────────────
-await AnsiConsole.Live(RenderView()).StartAsync(async ctx => {
-    while (!keyboard.QuitRequested)
+Layout activeLayout = mainLayout;
+
+await AnsiConsole.Live(mainLayout)
+    .AutoClear(false)
+    .Overflow(VerticalOverflow.Ellipsis)
+    .Cropping(VerticalOverflowCropping.Bottom)
+    .StartAsync(async ctx =>
     {
-        ctx.UpdateTarget(RenderView());
-
-        // Skip polling when in Command mode - let the user control the communication
-        if (keyboard.ViewMode == ViewMode.Command)
+        while (!keyboard.QuitRequested)
         {
-            await Task.Delay(100);
-            continue;
-        }
+            // Poll keyboard on the main thread — same thread as Live rendering
+            await keyboard.PollKeysAsync();
 
-        // Poll using the GSI command
-        string response = await bridge.SendAndReceiveAsync("GSI,0", TimeSpan.FromMilliseconds(500));
-
-        if (response != "TIMEOUT")
-        {
-            bool parsed = UnidenParser.UpdateStatus(status, response);
-            
-            if (!parsed) {
-                status.LastCommandSent = MarkupConstants.StatusDataUnrecognized;
-            } else {
-                status.LastCommandSent = MarkupConstants.StatusUpdated;
-                contactTracker.ProcessSignalUpdate(status);
+            // Skip polling when in Command mode — let the user control the communication
+            if (keyboard.ViewMode == ViewMode.Command)
+            {
+                CommandViewRenderer.Update(commandLayout, bridge.IsConnected, keyboard.CommandInput, keyboard.CommandHistory);
+                if (!ReferenceEquals(activeLayout, commandLayout)) { SyncUpdateTarget(ctx, commandLayout); activeLayout = commandLayout; }
+                else SyncRefresh(ctx);
+                await Task.Delay(100);
+                continue;
             }
-        }
-        else 
-        {
-            status.LastCommandSent = MarkupConstants.StatusTimeout;
-        }
 
-        await Task.Delay(100);
-    }
-});
+            // Poll using the GSI command.
+            // GsiResponseHandler (subscribed to bridge.OnDataReceived) handles XML parsing
+            // and status updates via the event pipeline — no duplicate parse needed here.
+            string response = await bridge.SendAndReceiveAsync("GSI,0", TimeSpan.FromMilliseconds(500));
+
+            if (response != "TIMEOUT")
+            {
+                status.LastCommandSent = MarkupConstants.StatusUpdated;
+
+                // Track signal lock state and log new contacts to file
+                bool wasLocked = status.SignalLocked;
+                contactTracker.ProcessSignalUpdate(status);
+
+                if (!wasLocked && status.SignalLocked)
+                {
+                    // Signal just locked — log the hit asynchronously (fire-and-forget)
+                    _ = fileLogger.LogHitAsync(status.Frequency, status.ChannelName, status.SystemName);
+                }
+            }
+            else
+            {
+                status.LastCommandSent = MarkupConstants.StatusTimeout;
+            }
+
+            // Snapshot status for a consistent read — background thread writes concurrently
+            var snap = status.Snapshot();
+
+            // Mutate the correct layout in place then refresh with synchronized output.
+            if (keyboard.ViewMode == ViewMode.Debug)
+            {
+                DebugViewRenderer.Update(debugLayout, bridge.IsConnected, rawRadioData, keyboardInputLog, keyboard.SpacebarHeld);
+                if (!ReferenceEquals(activeLayout, debugLayout)) { SyncUpdateTarget(ctx, debugLayout); activeLayout = debugLayout; }
+                else SyncRefresh(ctx);
+            }
+            else if (MenuViewRenderer.IsMenuMode(snap))
+            {
+                MenuViewRenderer.Update(menuLayout, snap, bridge.IsConnected, keyboard.SpacebarHeld);
+                if (!ReferenceEquals(activeLayout, menuLayout)) { SyncUpdateTarget(ctx, menuLayout); activeLayout = menuLayout; }
+                else SyncRefresh(ctx);
+            }
+            else
+            {
+                MainViewRenderer.Update(mainLayout, snap, bridge.IsConnected, contactTracker.GetContacts(), keyboard.SpacebarHeld);
+                if (!ReferenceEquals(activeLayout, mainLayout)) { SyncUpdateTarget(ctx, mainLayout); activeLayout = mainLayout; }
+                else SyncRefresh(ctx);
+            }
+
+            await Task.Delay(100);
+        }
+    });
 
 // ── CLEANUP ────────────────────────────────────────────────────────────────────
-keyboardCts.Cancel();
-try { await keyboardTask; } catch (OperationCanceledException) { }
 bridge.Dispose();
 AnsiConsole.MarkupLine("[yellow]Goodbye![/]");
-
-// ── RENDER DISPATCHER ──────────────────────────────────────────────────────────
-Layout RenderView()
-{
-    // Command view takes priority (user is manually controlling scanner)
-    if (keyboard.ViewMode == ViewMode.Command)
-    {
-        return CommandViewRenderer.Render(
-            bridge.IsConnected,
-            keyboard.CommandInput,
-            keyboard.CommandHistory);
-    }
-    
-    // Debug view
-    if (keyboard.ViewMode == ViewMode.Debug)
-    {
-        return DebugViewRenderer.Render(
-            bridge.IsConnected,
-            rawRadioData,
-            keyboardInputLog,
-            keyboard.SpacebarHeld);
-    }
-    
-    // Menu view when scanner is in menu mode or showing a popup
-    if (MenuViewRenderer.IsMenuMode(status))
-    {
-        return MenuViewRenderer.Render(
-            status,
-            bridge.IsConnected,
-            keyboard.SpacebarHeld);
-    }
-    
-    // Default: Main scanning view
-    return MainViewRenderer.Render(
-        status,
-        bridge.IsConnected,
-        contactTracker.GetContacts(),
-        keyboard.SpacebarHeld);
-}

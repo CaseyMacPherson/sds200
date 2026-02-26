@@ -5,101 +5,129 @@ namespace SDS200.Cli.Presentation;
 
 /// <summary>
 /// Renders the main scanning view with frequency display, identity info, and contacts.
+/// All layout slots are wired once in CreateLayout(). Update() only mutates table rows
+/// and markup text in place — no new widget objects are created per frame.
 /// </summary>
 public static class MainViewRenderer
 {
+    // All persistent widgets — created once, mutated each frame
+    private static readonly Table _identityTable = new Table().NoBorder().HideHeaders().AddColumns("L", "V");
+    private static readonly Table _contactTable  = new Table().NoBorder().HideHeaders().AddColumns("Freq", "Mode", "ID", "Dur");
+    private static readonly Table _rssiTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private static readonly Table _heroTable     = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private static readonly Table _hotkeysTable  = new Table().NoBorder().HideHeaders().AddColumns("V");
+    private static readonly Table _footerTable   = new Table().NoBorder().HideHeaders().AddColumns("V");
+
+    // Track last values to avoid replacing Panel objects unless the header text actually changed
+    private static string _lastModeLabel = string.Empty;
+
     /// <summary>
-    /// Renders the main view layout.
+    /// Creates the fixed layout skeleton and wires all widget slots once.
     /// </summary>
-    /// <param name="status">Current scanner status.</param>
-    /// <param name="isConnected">Whether the scanner is connected.</param>
-    /// <param name="contacts">Recent contact log entries.</param>
-    /// <param name="spacebarHeld">Whether the spacebar is being held (for expanded hotkeys).</param>
-    /// <returns>A Layout containing the main view.</returns>
-    public static Layout Render(
-        ScannerStatus status,
-        bool isConnected,
-        IEnumerable<ContactLogEntry> contacts,
-        bool spacebarHeld)
+    public static Layout CreateLayout()
     {
-        // Build mode-aware identity table
-        var info = BuildIdentityTable(status);
-
-        // Contact log table (show recent contacts)
-        var contactTable = BuildContactTable(contacts);
-
-        // Mode label for the hero panel header
-        string modeLabel = MarkupConstants.GetModeLabel(status.VScreen, status.Mode);
-
         var layout = new Layout("Root")
             .SplitRows(
-                new Layout("Hero"),
-                new Layout("Mid").SplitColumns(new Layout("Data"), new Layout("RSSI")),
+                new Layout("Hero").Size(11),
+                new Layout("Mid").Size(9).SplitColumns(new Layout("Data"), new Layout("RSSI")),
                 new Layout("Contacts").Size(6),
                 new Layout("Hotkeys").Size(1),
                 new Layout("Footer").Size(3)
             );
 
-        // Hero panel with frequency
-        var freqFiglet = new FigletText($"{status.Frequency:F4} MHz")
-            .Color(Color.Green)
-            .Centered();
-        var heroContent = new Rows(
-            freqFiglet,
-            new Markup(MarkupConstants.FormatModulation(status.Modulation)).Centered()
-        );
-        layout["Hero"].Update(new Panel(heroContent)
-            .Header(string.Format(MarkupConstants.HeaderPanel, Markup.Escape(modeLabel)))
-            .Border(BoxBorder.Double));
-
-        // Data panel
-        layout["Data"].Update(new Panel(info).Header(MarkupConstants.HeaderIdentity).Expand());
-
-        // Signal panel
-        var signalRows = new Rows(
-            new Markup(string.Format(MarkupConstants.FormatRssi, Markup.Escape(status.Rssi))),
-            new Markup(string.Format(MarkupConstants.FormatVolumeSquelch, status.Volume, status.Squelch)),
-            new Markup(string.Format(MarkupConstants.FormatMuteAttenuator, Markup.Escape(status.Mute), Markup.Escape(status.Attenuator)))
-        );
-        layout["RSSI"].Update(new Panel(
-            Align.Center(signalRows, VerticalAlignment.Middle))
-            .Header(MarkupConstants.HeaderSignal));
-
-        // Contact log panel
-        layout["Contacts"].Update(new Panel(contactTable).Header(MarkupConstants.HeaderRecentContacts).Expand());
-
-        // Hotkey panel
-        string hotkeyText = spacebarHeld
-            ? MarkupConstants.HotkeyMainExpanded
-            : MarkupConstants.HotkeyMainCompact;
-        layout["Hotkeys"].Update(new Markup(hotkeyText).LeftJustified());
-
-        // Footer with connection status
-        string connText = MarkupConstants.FormatConnectionStatus(isConnected);
-        string statusExtra = status.Recording == "On" ? $"  {MarkupConstants.RecordingIndicator}" : "";
-        string ledExtra = status.AlertLed != "Off" ? MarkupConstants.FormatLedIndicator(Markup.Escape(status.AlertLed)) : "";
-        layout["Footer"].Update(new Panel(
-            new Markup($"{connText}{statusExtra}{ledExtra}"))
-            .Border(BoxBorder.None));
+        layout["Hero"].Update(new Panel(_heroTable).Border(BoxBorder.Double));
+        layout["Data"].Update(new Panel(_identityTable).Header(MarkupConstants.HeaderIdentity).Expand());
+        layout["RSSI"].Update(new Panel(Align.Center(_rssiTable, VerticalAlignment.Middle)).Header(MarkupConstants.HeaderSignal));
+        layout["Contacts"].Update(new Panel(_contactTable).Header(MarkupConstants.HeaderRecentContacts).Expand());
+        layout["Hotkeys"].Update(new Panel(_hotkeysTable).Border(BoxBorder.None));
+        layout["Footer"].Update(new Panel(_footerTable).Border(BoxBorder.None));
 
         return layout;
     }
 
-    private static Table BuildIdentityTable(ScannerStatus s)
+    /// <summary>
+    /// Mutates all persistent table rows in place — no new widget objects created.
+    /// </summary>
+    public static void Update(
+        Layout layout,
+        ScannerStatus status,
+        bool isConnected,
+        IEnumerable<ContactLogEntry> contacts,
+        bool spacebarHeld)
     {
-        var info = new Table().NoBorder().HideHeaders().AddColumns("L", "V")
-            .AddRow(MarkupConstants.LabelSystem, Markup.Escape(s.SystemName))
-            .AddRow(MarkupConstants.LabelDepartment, Markup.Escape(s.DepartmentName));
+        // Hero: only replace Panel wrapper when header text changes (mode label is stable during scanning)
+        string modeLabel = MarkupConstants.GetModeLabel(status.VScreen, status.Mode);
+        if (modeLabel != _lastModeLabel)
+        {
+            _lastModeLabel = modeLabel;
+            layout["Hero"].Update(new Panel(_heroTable)
+                .Header(string.Format(MarkupConstants.HeaderPanel, Markup.Escape(modeLabel)))
+                .Border(BoxBorder.Double));
+        }
+        _heroTable.Rows.Clear();
+        _heroTable.AddRow(new FigletText($"{status.Frequency:F4} MHz").Color(Color.Green).Centered());
+        _heroTable.AddRow(new Markup(MarkupConstants.FormatModulation(status.Modulation)).Centered());
 
-        // Show context-appropriate rows based on V_Screen
+        // Identity table
+        _identityTable.Rows.Clear();
+        _identityTable.AddRow(MarkupConstants.LabelSystem, Markup.Escape(status.SystemName));
+        _identityTable.AddRow(MarkupConstants.LabelDepartment, Markup.Escape(status.DepartmentName));
+        AddIdentityRows(_identityTable, status);
+        if (status.Hold == "On")
+            _identityTable.AddRow(MarkupConstants.LabelHold, MarkupConstants.LabelHoldOn);
+
+        // RSSI table
+        _rssiTable.Rows.Clear();
+        _rssiTable.AddRow(new Markup(string.Format(MarkupConstants.FormatRssi, Markup.Escape(status.Rssi))));
+        _rssiTable.AddRow(new Markup(string.Format(MarkupConstants.FormatVolumeSquelch, status.Volume, status.Squelch)));
+        _rssiTable.AddRow(new Markup(string.Format(MarkupConstants.FormatMuteAttenuator, Markup.Escape(status.Mute), Markup.Escape(status.Attenuator))));
+
+        // Contact table
+        _contactTable.Rows.Clear();
+        int count = 0;
+        foreach (var contact in contacts)
+        {
+            if (count >= 5) break;
+            string contactId = contact.TgId != "---" ? contact.TgId : contact.ChannelName;
+            _contactTable.AddRow(
+                $"{contact.Frequency:F4}",
+                contact.Mode,
+                Markup.Escape(contactId),
+                $"{(int)contact.DurationSeconds}s"
+            );
+            count++;
+        }
+
+        // Hotkeys
+        _hotkeysTable.Rows.Clear();
+        _hotkeysTable.AddRow(new Markup(spacebarHeld
+            ? MarkupConstants.HotkeyMainExpanded
+            : MarkupConstants.HotkeyMainCompact));
+
+        // Footer
+        string connText = MarkupConstants.FormatConnectionStatus(isConnected);
+        string statusExtra = status.Recording == "On" ? $"  {MarkupConstants.RecordingIndicator}" : "";
+        string ledExtra = status.AlertLed != "Off" ? MarkupConstants.FormatLedIndicator(Markup.Escape(status.AlertLed)) : "";
+        _footerTable.Rows.Clear();
+        _footerTable.AddRow(new Markup($"{connText}{statusExtra}{ledExtra}"));
+    }
+
+    private static void AddIdentityRows(Table info, ScannerStatus s)
+    {
         switch (s.VScreen)
         {
             case "trunk_scan":
-                AddTrunkScanRows(info, s);
+                info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
+                string tgidTrunk = s.TgId != "---" && s.TgId != "TGID" ? s.TgId : "---";
+                info.AddRow(MarkupConstants.LabelTgid, string.Format(MarkupConstants.BoldWhite, Markup.Escape(tgidTrunk)));
+                info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
+                if (s.UnitId != "---") info.AddRow(MarkupConstants.LabelUnitId, Markup.Escape(s.UnitId));
                 break;
 
             case "tone_out":
-                AddToneOutRows(info, s);
+                info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
+                info.AddRow(MarkupConstants.LabelToneA, Markup.Escape(s.ToneA));
+                info.AddRow(MarkupConstants.LabelToneB, Markup.Escape(s.ToneB));
                 break;
 
             case "custom_search":
@@ -109,15 +137,22 @@ public static class MainViewRenderer
             case "repeater_find":
             case "reverse_frequency":
             case "direct_entry":
-                AddSearchRows(info, s);
+                if (s.SearchRangeLower != "---")
+                    info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
                 break;
 
             case "discovery_conventional":
-                AddDiscoveryConventionalRows(info, s);
+                if (s.SearchRangeLower != "---")
+                    info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
+                if (s.HitCount > 0) info.AddRow(MarkupConstants.LabelHits, s.HitCount.ToString());
                 break;
 
             case "discovery_trunking":
-                AddDiscoveryTrunkingRows(info, s);
+                info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
+                string tgidDisc = s.TgId != "---" && s.TgId != "TGID" ? s.TgId : "---";
+                info.AddRow(MarkupConstants.LabelTgid, string.Format(MarkupConstants.BoldWhite, Markup.Escape(tgidDisc)));
+                info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
+                if (s.HitCount > 0) info.AddRow(MarkupConstants.LabelHits, s.HitCount.ToString());
                 break;
 
             case "analyze_system_status":
@@ -125,85 +160,15 @@ public static class MainViewRenderer
                 break;
 
             case "analyze":
-                AddAnalyzeRows(info, s);
+                info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
+                info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
+                if (s.SearchRangeLower != "---")
+                    info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
                 break;
 
-            default: // conventional_scan, custom_with_scan, cchits_with_scan, wx_alert, etc.
+            default:
                 info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
                 break;
         }
-
-        // Hold indicator
-        if (s.Hold == "On")
-            info.AddRow(MarkupConstants.LabelHold, MarkupConstants.LabelHoldOn);
-
-        return info;
-    }
-
-    private static void AddTrunkScanRows(Table info, ScannerStatus s)
-    {
-        info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
-        string tgidDisplay = s.TgId != "---" && s.TgId != "TGID" ? s.TgId : "---";
-        info.AddRow(MarkupConstants.LabelTgid, string.Format(MarkupConstants.BoldWhite, Markup.Escape(tgidDisplay)));
-        info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
-        if (s.UnitId != "---") info.AddRow(MarkupConstants.LabelUnitId, Markup.Escape(s.UnitId));
-    }
-
-    private static void AddToneOutRows(Table info, ScannerStatus s)
-    {
-        info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
-        info.AddRow(MarkupConstants.LabelToneA, Markup.Escape(s.ToneA));
-        info.AddRow(MarkupConstants.LabelToneB, Markup.Escape(s.ToneB));
-    }
-
-    private static void AddSearchRows(Table info, ScannerStatus s)
-    {
-        if (s.SearchRangeLower != "---")
-            info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
-    }
-
-    private static void AddDiscoveryConventionalRows(Table info, ScannerStatus s)
-    {
-        if (s.SearchRangeLower != "---")
-            info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
-        if (s.HitCount > 0) info.AddRow(MarkupConstants.LabelHits, s.HitCount.ToString());
-    }
-
-    private static void AddDiscoveryTrunkingRows(Table info, ScannerStatus s)
-    {
-        info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
-        string tgidDisplay = s.TgId != "---" && s.TgId != "TGID" ? s.TgId : "---";
-        info.AddRow(MarkupConstants.LabelTgid, string.Format(MarkupConstants.BoldWhite, Markup.Escape(tgidDisplay)));
-        info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
-        if (s.HitCount > 0) info.AddRow(MarkupConstants.LabelHits, s.HitCount.ToString());
-    }
-
-    private static void AddAnalyzeRows(Table info, ScannerStatus s)
-    {
-        info.AddRow(MarkupConstants.LabelSite, Markup.Escape(s.SiteName));
-        info.AddRow(MarkupConstants.LabelChannel, string.Format(MarkupConstants.BoldWhite, Markup.Escape(s.ChannelName)));
-        if (s.SearchRangeLower != "---")
-            info.AddRow(MarkupConstants.LabelRange, $"{Markup.Escape(s.SearchRangeLower)} - {Markup.Escape(s.SearchRangeUpper)}");
-    }
-
-    private static Table BuildContactTable(IEnumerable<ContactLogEntry> contacts)
-    {
-        var contactTable = new Table().NoBorder().HideHeaders().AddColumns("Freq", "Mode", "ID", "Dur");
-        int contactCount = 0;
-        foreach (var contact in contacts)
-        {
-            if (contactCount >= 5) break; // Show only last 5
-            string contactId = contact.TgId != "---" ? contact.TgId : contact.ChannelName;
-            int durSec = (int)contact.DurationSeconds;
-            contactTable.AddRow(
-                $"{contact.Frequency:F4}",
-                contact.Mode,
-                Markup.Escape(contactId),
-                $"{durSec}s"
-            );
-            contactCount++;
-        }
-        return contactTable;
     }
 }
-

@@ -1,18 +1,44 @@
+using SDS200.Cli.Abstractions.Core;
 using SDS200.Cli.Abstractions.Models;
 
 namespace SDS200.Cli.Logic;
 using System.Xml.Linq;
-using System.Text.RegularExpressions;
 
-public static class UnidenParser
+/// <summary>
+/// Parses raw GSI XML responses from the Uniden SDS200 scanner and updates
+/// a <see cref="ScannerStatus"/> object in-place.
+/// Implements <see cref="IResponseParser"/> so it can be injected and mocked in tests.
+/// </summary>
+public class UnidenParser : IResponseParser
 {
-    public static bool UpdateStatus(ScannerStatus status, string rawData)
+    /// <summary>
+    /// Shared singleton instance for use in production code that does not need mocking.
+    /// </summary>
+    public static readonly UnidenParser Default = new();
+
+    /// <inheritdoc/>
+    public bool UpdateStatus(ScannerStatus status, string rawData)
+        => ParseInternal(status, rawData);
+
+    /// <summary>
+    /// Static convenience overload — delegates to <see cref="Default"/>.
+    /// Kept for backward compatibility with existing call sites and tests.
+    /// </summary>
+    /// <param name="status">The status object to update.</param>
+    /// <param name="rawData">The raw GSI response string.</param>
+    /// <returns><c>true</c> if parsing succeeded.</returns>
+    public static bool UpdateStatus(ScannerStatus status, string rawData, bool _static = true)
+        => Default.UpdateStatus(status, rawData);
+
+    // ── Core parse logic ───────────────────────────────────────────────
+
+    private static bool ParseInternal(ScannerStatus status, string rawData)
     {
         if (string.IsNullOrWhiteSpace(rawData)) return false;
 
         try
         {
-            string? xmlContent = ExtractXmlFromGsiResponse(rawData);
+            string? xmlContent = XmlParserHelpers.ExtractXmlFromGsiResponse(rawData);
             if (string.IsNullOrEmpty(xmlContent)) return false;
 
             if (!xmlContent.Contains("</ScannerInfo>")) return false;
@@ -336,11 +362,11 @@ public static class UnidenParser
         // Extract RSSI both as string (S0, S5, etc.) and as numeric for threshold detection
         string rssiRaw = prop.Attribute("Rssi")?.Value ?? "0";
         s.Rssi = string.IsNullOrEmpty(rssiRaw) ? "S0" : $"S{rssiRaw}";
-        
+
         // Parse numeric RSSI value for threshold detection
         if (int.TryParse(rssiRaw, out int rssiNum))
             s.LastRssiValue = rssiNum;
-        
+
         s.Mute = Attr(prop, "Mute", "Unmute");
         s.Attenuator = Attr(prop, "Att", "Off");
         s.AlertLed = Attr(prop, "A_Led", "Off");
@@ -353,7 +379,7 @@ public static class UnidenParser
             s.Squelch = sql;
     }
 
-    /// <summary>Parse ViewDescription for menu/popup display info</summary>
+    /// <summary>Parse ViewDescription for menu/popup display info.</summary>
     private static void ParseViewDescription(XElement root, ScannerStatus s)
     {
         s.InfoLines.Clear();
@@ -372,9 +398,7 @@ public static class UnidenParser
             {
                 string text = infoArea.Attribute("Text")?.Value ?? "";
                 if (!string.IsNullOrEmpty(text))
-                {
                     s.InfoLines.Add(text);
-                }
             }
         }
 
@@ -383,14 +407,13 @@ public static class UnidenParser
         if (popup != null)
         {
             s.PopupText = popup.Attribute("Text")?.Value ?? "";
-            // Clean up newline escapes
             s.PopupText = s.PopupText.Replace("\\n", "\n").Trim();
         }
 
         // Detect menu mode from V_Screen or Mode attribute
         string vscreen = s.VScreen.ToLowerInvariant();
         string mode = s.Mode.ToLowerInvariant();
-        s.IsInMenu = vscreen.Contains("menu") || 
+        s.IsInMenu = vscreen.Contains("menu") ||
                      mode.Contains("menu") ||
                      !string.IsNullOrEmpty(s.PopupText);
 
@@ -399,45 +422,14 @@ public static class UnidenParser
             s.MenuTitle = s.InfoLines[0];
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────
+    // ── Private helpers (delegate to XmlParserHelpers) ─────────────────
 
-    /// <summary>Read an attribute value, returning a fallback if missing or empty.</summary>
     private static string Attr(XElement el, string name, string fallback = "---")
-        => el.Attribute(name)?.Value is { Length: > 0 } v ? v : fallback;
+        => XmlParserHelpers.Attr(el, name, fallback);
 
-    /// <summary>Parse a frequency string like "154.4150MHz" into a double and assign it.</summary>
     private static void SetFrequency(ScannerStatus s, string raw)
     {
-        if (string.IsNullOrEmpty(raw) || raw == "---") return;
-        string cleaned = Regex.Replace(raw, "[^0-9.]", "");
-        if (double.TryParse(cleaned, out double freq))
-            s.Frequency = freq;
-    }
-
-    /// <summary>
-    /// Strips the "GSI,&lt;XML&gt;," envelope from a raw GSI response and returns clean XML.
-    /// </summary>
-    private static string? ExtractXmlFromGsiResponse(string rawData)
-    {
-        if (string.IsNullOrWhiteSpace(rawData)) return null;
-
-        string data = rawData.Trim();
-
-        const string envelope = "GSI,<XML>,";
-        int envelopeEnd = data.IndexOf(envelope);
-
-        if (envelopeEnd >= 0)
-        {
-            int xmlStartIndex = envelopeEnd + envelope.Length;
-            if (xmlStartIndex < data.Length)
-                data = data.Substring(xmlStartIndex).Trim();
-            else
-                return null;
-        }
-
-        if (data.StartsWith("<"))
-            return data;
-
-        return null;
+        var freq = XmlParserHelpers.ParseFrequency(raw);
+        if (freq.HasValue) s.Frequency = freq.Value;
     }
 }

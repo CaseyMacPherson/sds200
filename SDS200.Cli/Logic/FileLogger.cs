@@ -1,29 +1,70 @@
+using SDS200.Cli.Abstractions.Core;
+
 namespace SDS200.Cli.Logic;
 
-using System;
-using System.IO;
-using System.Threading.Tasks;
-
-public static class FileLogger
+/// <summary>
+/// Logs scanner contact hits to a CSV file.
+/// Injectable and testable via <see cref="IFileSystem"/> and <see cref="ITimeProvider"/>.
+/// </summary>
+public class FileLogger
 {
-    private static readonly string LogPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scanner_hits.csv");
-    private static readonly object _lock = new();
+    private readonly IFileSystem _fileSystem;
+    private readonly ITimeProvider _timeProvider;
+    private readonly string _logPath;
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
-    public static async Task LogHitAsync(double frequency, string channel, string system)
+    /// <summary>
+    /// Creates a <see cref="FileLogger"/> writing to the default path beside the executable.
+    /// </summary>
+    public FileLogger() : this(SystemFileSystem.Instance, new SystemTimeProvider()) { }
+
+    /// <summary>
+    /// Creates a <see cref="FileLogger"/> with injected dependencies.
+    /// </summary>
+    /// <param name="fileSystem">File system abstraction used for all I/O operations.</param>
+    /// <param name="timeProvider">Time provider used to stamp each log entry.</param>
+    /// <param name="logPath">
+    /// Optional override for the log file path.
+    /// Defaults to <c>scanner_hits.csv</c> beside the application executable.
+    /// </param>
+    public FileLogger(IFileSystem fileSystem, ITimeProvider timeProvider, string? logPath = null)
     {
-        // QA Engineer: Ensure we don't log empty "Scanning" states
-        if (frequency == 0 || string.IsNullOrEmpty(channel) || channel.Contains("...")) return;
+        _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _logPath = logPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scanner_hits.csv");
+    }
 
-        var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{frequency:F4},{system},{channel}{Environment.NewLine}";
+    /// <summary>
+    /// Appends a contact hit to the CSV log.
+    /// Skips entries where the frequency is zero or the channel name is empty/default.
+    /// </summary>
+    /// <param name="frequency">Frequency in MHz.</param>
+    /// <param name="channel">Channel or TGID name.</param>
+    /// <param name="system">System name.</param>
+    public async Task LogHitAsync(double frequency, string channel, string system)
+    {
+        // Skip "scanning" idle states — no meaningful contact to log
+        if (frequency == 0 || string.IsNullOrEmpty(channel) || channel.Contains("..."))
+            return;
 
+        string line = $"{_timeProvider.Now:yyyy-MM-dd HH:mm:ss},{frequency:F4},{system},{channel}{Environment.NewLine}";
+
+        // Use a semaphore rather than a lock so the wait is async-safe
+        await _writeLock.WaitAsync();
         try
         {
-            // Use a simple lock for file safety, but write asynchronously
-            await File.AppendAllTextAsync(LogPath, line);
+            await _fileSystem.AppendAllTextAsync(_logPath, line);
         }
-        catch (Exception)
+        catch (IOException)
         {
-            // Fail silently or log to console if file is locked
+            // Transient file-lock or disk error — skip this entry rather than crashing
+        }
+        finally
+        {
+            _writeLock.Release();
         }
     }
+
+    /// <summary>Gets the full path of the log file being written.</summary>
+    public string LogPath => _logPath;
 }

@@ -251,7 +251,8 @@ GSI,<XML>,<?xml version="1.0" encoding="utf-8"?>
         // Arrange
         var entry = new ContactLogEntry
         {
-            LockTime = DateTime.UtcNow.AddHours(-1) // 1 hour ago
+            LockTime = DateTime.UtcNow.AddHours(-1), // 1 hour ago
+            Frequency = 0d
         };
 
         // Act
